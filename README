@@ -14,7 +14,7 @@
 
 	*** This is alpha software -- use at your own risks ***
 
-README for nsapi_perl version 0.10
+README for nsapi_perl version 0.15
 
 
 Introduction
@@ -47,6 +47,10 @@ Nevertheless, installation should be relatively straight-forward on
 any system where Perl has been compiled and which has a working
 Netscape server.
 
+Please see the paragraph in the 'Notes' section of INSTALL regarding
+the use of the static libperl.a and Perls that have binary
+compatibility with 5.003.
+
 The installation process is Unix-centric.  If you are reading this on
 a Win32 system, I encourage you to adapt the installation process to
 work and send me (Ben Sugars, bsugars@canoe.ca) an email detailing the
@@ -72,6 +76,10 @@ provide further direction:
         -perldoc Netscape::Server::Request - another class which your
         subroutines will use.
 
+        -perldoc Netscape::Registry - this module lets you run perl
+        CGI scripts unmodified from within the httpd process itself.
+        This offers a large performance boost.
+
 
 Issues, Bugs and Wishes
 -----------------------
@@ -83,19 +91,22 @@ credit for it.
 
 Here are the major issues at this time:
 
-        -The installation process needs to be improved.  In
-        particular, there's no reason why nsapi_perl can't be made to
-        build "out-of-the-box" on Win32.
+The installation process needs to be improved.  Ideally it should be
+able to detect what the correct combination of compilation and linking
+options for your system are and go from there.
 
-        -I can only get extension modules to work if I recompile them
-        adding '-lperl' to the cc options.
+Extension modules that use dynamic loading of C code remain
+problematic.  For me, they only work if the module's shared library
+contains a runpath to the shared perl library.  In otherwords, for
+module Foo, an ldd on Foo.so needs to so
+        libperl.so =>    /lib/perl5/sun4-solaris/5.00401/CORE/libperl.so
+or something like that.
 
-        -Threading.  Grrrr.  Netscape *used* to let you run their
-        multithreaded servers as multiprocess single-threaded servers
-        if you wanted to.  The 3.x line doesn't let you do this,
-        AFAIK.  So, we need a thread-safe libperl.so.  I know this is
-        being worked on, but in the meantime, does anyone know if the
-        libperl.so with 5.004 is OK to use?
+Threading.  Grrrr.  Netscape *used* to let you run their
+multithreaded servers as multiprocess single-threaded servers if you
+wanted to.  The 3.x line doesn't let you do this, AFAIK.  So, we need
+a thread-safe libperl.so.  I know this is being worked on, but in the
+meantime, does anyone know if the libperl.so with 5.004 is OK to use?
 
 
 Notes
@@ -119,4 +130,5 @@ loudly acknowledged.
 
 -Ben Sugars
 <bsugars@canoe.ca>
-November 17, 1997
+January 8, 1997
+

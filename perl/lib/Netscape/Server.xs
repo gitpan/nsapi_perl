@@ -191,6 +191,32 @@ int arg;
   return 0;
 }
 
+int post2qstr(netbuf *buf, char *qstr, int clen, int offset) {
+  /* This function is borrowed (almost) verbatim from
+     http://help.netscape.com/kb/server/960513-118.html. */
+  int ichar = 1;  /* char read in from netbuf */
+
+  /*
+     Loop through reading a character and writing it to qstr, until
+     either len characters have been read, there's no more input,
+     or there's an IO error.
+     */
+  
+  while ( clen && ichar != IO_EOF ) {
+    ichar = netbuf_getc(buf);
+    
+    /* check for error in reading */
+    if ( ichar == IO_ERROR ) {
+      break;
+    }
+    qstr[offset++] = ichar;
+    clen--;
+  }
+  qstr[offset] = '\0'; 
+
+  return(offset);
+}
+
 char* pblock_access(pblock *pb, char* name, char* value) {
   char *current_value;
   pb_param *pp;
@@ -261,8 +287,8 @@ remote_host(session)
    INIT:
      char* remote_host;
    PPCODE:
-     remote_host = session_maxdns(session);
-     remote_host == NULL ? XSRETURN_UNDEF : XSRETURN_PV(remote_host);
+     remote_host = session_dns(session);
+     remote_host == NULL ? XSRETURN_PV(pblock_findval("ip", session->client)) : XSRETURN_PV(remote_host);
 
  # These methods implement some standard NSAPI functions that
  # expect a Session* to be passed to them
@@ -287,7 +313,19 @@ net_write(session, message)
      RETVAL = net_write(session->csd, message, strlen(message));
    OUTPUT:
      RETVAL
-     
+
+void
+net_read(session, size, offset=0)
+     Session* session
+     int size
+     int offset
+   PREINIT:
+     char* buffer;
+     int bytes_read;
+   PPCODE:
+     buffer = (char *)MALLOC(size + 1);
+     bytes_read = post2qstr(session->inbuf, buffer, size, offset);
+     bytes_read >= 0 ? XSRETURN_PV(buffer) : XSRETURN_UNDEF;
 
 MODULE = Netscape::Server		PACKAGE = Netscape::Server::Request	
 
@@ -307,7 +345,7 @@ path_info(request, path_info=NULL)
      Request* request
      char* path_info
    PPCODE:
-     path_info = pblock_access(request->headers, "path-info", path_info);
+     path_info = pblock_access(request->vars, "path-info", path_info);
      path_info == NULL ? XSRETURN_UNDEF : XSRETURN_PV(path_info);
 
 void
@@ -315,7 +353,7 @@ query_string(request, query_string=NULL)
      Request* request
      char* query_string
    PPCODE:
-     query_string = pblock_access(request->vars, "query", query_string);
+     query_string = pblock_access(request->reqpb, "query", query_string);
      query_string == NULL ? XSRETURN_UNDEF : XSRETURN_PV(query_string);
 
 void

@@ -77,6 +77,12 @@ interface to the NSAPI.
 These are Perl classes from which objects that are passed as arguments
 to nsapi_perl subroutines are instantiated.
 
+=item B<Netscape::Registry>
+
+This module allows you run run CGI scripts unmodified from within the
+Netscape server httpd process.  This provides a large performance
+boost.  Netscape::Registry has its own man page.
+
 =back
 
 =head2 Initialization
@@ -366,7 +372,9 @@ In F<obj.conf>:
  </Object>
 
 In F<nsapi_perl.conf>:
-
+ package Netscape::Server::Config;
+ use Netscape::Server::Request;
+ use Netscape::Server::Session;
  use Netscape::HelloWorld;
 
 In F<HelloWorld.pm>:
@@ -422,6 +430,13 @@ In F<obj.conf>:
  NameTrans fn="nsapi_perl_handler" module="Netscape::Redirect"
      from="/special" alt="/default/home.html" url="/for_mozilla/home.html"
 
+In F<nsapi_perl.conf>:
+
+ package Netscape::Server::Config;
+ use Netscape::Server::Request;
+ use Netscape::Server::Session; 
+ use Netscape::Redirect;
+
 In F<Redirect.pm>:
 
  package Netscape::Redirect;
@@ -435,7 +450,7 @@ In F<Redirect.pm>:
      my $from = $pb->{'from'};
      my $url = $pb->{'url'};
      my $alt = $pb->{'alt'};
-    
+
      if (not defined $from or not defined $url) {
          log_error(LOG_MISCONFIG, "handler", $sn, $rq,
                    'missing parameter (need from, url)');
@@ -459,14 +474,14 @@ In F<Redirect.pm>:
          $rq->vars('url', $url);
          return REQ_ABORTED;
      }
-    
+     
      # --- No match.  Could be MSIE or Lynx or whomever.
      if (defined $alt) {
          # --- Rewrite the request string
          $rq->vars('ppath', $alt);
          return REQ_NOACTION;
      }
-    
+     
      # --- Else do nothing
      return REQ_NOACTION;
  }
@@ -509,7 +524,8 @@ Benjamin Sugars <bsugars@canoe.ca>
 
 =head1 SEE ALSO
 
-Netscape::Server, Netscape::Server::Session, Netscape::Server::Request
+Netscape::Server, Netscape::Server::Session,
+Netscape::Server::Request, Netscape::Registry
 
 perl(1)
 

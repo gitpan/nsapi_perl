@@ -26,7 +26,7 @@ use Config;
 
 # -Ben Sugars
 # <bsugars@canoe.ca>
-# November 13, 1997
+# December 11, 1997
 
 # ----------------------------------------------------------------------
 # --- Configuration section
@@ -56,7 +56,7 @@ $perl_ldlibs    = "$Config{libs}";
 
 
 #  $perl_ldopts are the arguments to $ld when perl was linked
-$perl_ldopts    = "$Config{ccdlflags} -L$Config{archlib}/CORE $perl_ldlibs";
+$perl_ldopts = "$Config{lddlflags} $Config{ccdlflags} -L$Config{archlib}/CORE $perl_ldlibs";
 
 
 #  $perl_lib is just a string identifying libperl.so.  This string will
@@ -65,13 +65,15 @@ $perl_ldopts    = "$Config{ccdlflags} -L$Config{archlib}/CORE $perl_ldlibs";
 $perl_lib       =  '-lperl';
 
 
-#  $perl_dynalib is the path to the Perl DynaLoader library. 
-$perl_dynalib   = "$Config{archlib}/auto/DynaLoader/DynaLoader.a";
+# $perl_libraries is the path to any Perl library archives that are needed.
+# This is at a minimum the path DynaLoader.a.  It may also include the
+# path to libperl.a if you don't have a libperl.so. (But see the INSTALL
+# file if you try using libperl.a; some people have had troubles with it.)
+$perl_libraries = "$Config{archlib}/auto/DynaLoader/DynaLoader.a";
 
 
 # $man3ext is the filename suffix on library man pages
 $man3ext        = $Config{man3ext};
-
 
 
 #  $ns_server_root is the root directory of your netscape server
@@ -80,7 +82,7 @@ $ns_server_root = '/usr/local/suitespot';
 
 
 #  $ns_inc_dir is the directory containing the NSAPI header files.
-$ns_inc_dir     = "$ns_server_root/include";
+$ns_inc_dir     = "$ns_server_root/nsapi/include";
 
 
 #  $nsapi_ccopts are the arguments cc expects when compiling NSAPI
@@ -114,8 +116,8 @@ WriteMakefile(
 	      'NAME'	=> 'Netscape::Server',
 	      'LIBS'	=> [$perl_lib],
 	      'LD' => $ld,
-	      'LDDLFLAGS' => "$perl_ldopts $perl_lib ../../../nsapi/nsapi_perl.o ../../../nsapi/xsinit.o $perl_dynalib",
-	      'VERSION' => '0.10',
+	      'LDDLFLAGS' => "$perl_ldopts $perl_lib ../../../nsapi/nsapi_perl.o ../../../nsapi/xsinit.o $perl_libraries",
+	      'VERSION' => '0.15',
 );
 
 # --- NSAPI C code section
@@ -163,7 +165,7 @@ OBJS = nsapi_perl.o xsinit.o
 
 # --- Targets
 nsapi_perl.so: \$(OBJS)
-	\$(LD) \$(PERL_LDOPTS) $perl_lib \$(OBJS) $perl_dynalib -o nsapi_perl.so
+	\$(LD) \$(PERL_LDOPTS) $perl_lib \$(OBJS) $perl_libraries -o nsapi_perl.so
 
 %.o : %.c
 	\$(CC) \$(NSAPI_CCOPTS) \$(PERL_CCOPTS) -c \$<

@@ -1,0 +1,9 @@
+v0.15 - Thu Dec 11 14:28:05 EST 1997
+      - Added Netscape::Registry;
+      - Added Netscape::Server::Socket;
+      - fixed bug with $path_info = $rq->path_info;
+      - fixed bug with $query_string = $rq->query_string;
+      - various other small bug fixes.
+
+v0.10 - Wed Nov 19 10:31:38 EST 1997
+      - First public version.

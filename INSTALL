@@ -14,7 +14,7 @@
 
         *** This is alpha software -- use at your own risks ***
 
-INSTALL file for nsapi_perl version 0.10.
+INSTALL file for nsapi_perl version 0.15.
 
 
 Introduction
@@ -137,6 +137,16 @@ My immediate goal for nsapi_perl is to make the install process easier
 and cross-platform.  The more we learn about what it takes to build on
 different systems, the better.
 
+-Problems seem to occur when using nsapi_perl in conjuction with a
+Perl that:
+     -has not been compiled to use the shared libperl.so;
+     -has been compiled to have binary compatibility with 5.003.
+If your Perl uses only the static libperl.a and/or has binary
+compatibility with 5.003 you could have problems.  At this time the
+only workaround seems to be recompiling Perl so that it agrees with
+nsapi_perl.  In other words, your Perl should be compiled to use
+libperl.so and it should *not* have binary compatibility with 5.003.
+
 -If someone can write a Makefile.PL that will automatically deduce (or
 at least suggest) all the right compilation and linking options for
 any target platform, you will be the subject of great praise in the
@@ -153,4 +163,4 @@ praise in the CREDITS file.
 
 -Ben Sugars
 <bsugars@canoe.ca>
-November 17, 1997
+January 8, 1997

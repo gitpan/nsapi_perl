@@ -60,6 +60,7 @@ Netscape::Server::Session - Perl interface to Netscape server Session
      $sn->protocol_status($rq, $status, $reason);
      $proceed = $sn->protocol_start_response($rq);
      $sn->net_write($message);
+     $sn->net_read($length, $offset);
      ...
  }
 
@@ -192,6 +193,16 @@ Sends the contents of $message to the client.  Returns the number of
 bytes actually sent (which may be less than the length of message if
 there are problems).  This seems to be the preferred method to send
 data to the client.
+
+=item B<net_read>
+
+ $sn->net_read($length, $offset);
+
+Reads $length bytes of data from the body of this Session's http
+request.  If $offset is specified, the reading begins at that position
+in the request body rather than at the beginning.  This method can be
+used to read HTML form data sent to the server by a client; see, for
+instance, the READ method in Netscape::Server::Socket.
 
 =back
 

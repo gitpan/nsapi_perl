@@ -57,7 +57,7 @@ Netscape::Server::Request - Perl interface to Netscape server Request
      $headers = $rq->headers;
      $srvhdrs = $rq->srvhdrs;
      $rq->protocol_status($sn, $status, $reason);
-     $proceed = $rq->protocol_start_response($sn, $status, $reason);
+     $proceed = $rq->protocol_start_response($sn, $rq);
      ...
  }
 
