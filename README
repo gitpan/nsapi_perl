@@ -14,7 +14,7 @@
 
 	*** This is alpha software -- use at your own risks ***
 
-README for nsapi_perl version 0.20.
+README for nsapi_perl version 0.21.
 
 
 Introduction
@@ -135,8 +135,14 @@ My sincere gratitude goes out to
     Other people who have tried and tested nsapi_perl, especially Danny
     Sadinoff <dsadinof@olf.com> and Craig Riter <criter@riter.com>.
 
+and especially
+
+    Doug MacEachern <dougm@telebusiness.co.nz> for creating mod_perl,
+    from which the concept and much of the execution of nsapi_perl was
+    borrowed and without which none of nsapi_perl would have been
+    possible.
 
 -Ben Sugars
 <bsugars@canoe.ca>
-February 12, 1998
+February 18, 1998
 

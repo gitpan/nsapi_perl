@@ -538,8 +538,8 @@ will be appended to.
 
 =head1 BUGS
 
-Send bug reports, comments, or questions to the author, Ben Sugars
-(bsugars@canoe.ca).
+Send bug reports, comments, or questions to the nsapi_perl mailing
+list: nsapi_perl@samurai.com.
 
 Here are the major issues at this time:
 
@@ -571,6 +571,9 @@ anyone know if the libperl.so with 5.004 is OK to use?
 Benjamin Sugars <bsugars@canoe.ca>, with lots of help from Steve
 Nielsen <Steve.Nielsen@infores.com> and Olivier Dehon
 <dehon_olivier@jpmorgan.com>.
+
+Please send comments, feature requests, bug reports to the nsapi_perl
+mailing list: nsapi_perl@samurai.com.
 
 =head1 SEE ALSO
 

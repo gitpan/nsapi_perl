@@ -36,3 +36,6 @@ v0.18 - Mon Feb  9 16:37:40 EST 1998
 v0.20 - Tue Feb 17 11:10:14 EST 1998
       - Fixed example obj.conf directory.
       - Renamed top-level conf directory to config.
+
+v0.21 - Wed Feb 18 09:56:49 EST 1998
+      - Fixed README file
