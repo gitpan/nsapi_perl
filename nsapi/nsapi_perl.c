@@ -20,7 +20,7 @@
 #include "base/pblock.h"
 #include "base/session.h"
 #include "base/cinfo.h"
-#ifdef NP_THREAD_SAFE
+#ifdef NP_USE_CRITICAL
 #include "base/crit.h"
 #endif
 #include "frame/req.h"
@@ -35,12 +35,12 @@
 static PerlInterpreter *nsapi_perl;
 
 /* Critical-section variable */
-#ifdef NP_THREAD_SAFE
+#ifdef NP_USE_CRITICAL
 static CRITICAL handler_crit;
 #endif
 
 /* Trace variables */
-#ifdef NP_THREAD_SAFE
+#ifdef NP_USE_CRITICAL
 static CRITICAL traceLog_crit;
 #endif
 static FILE *tfp = NULL;
@@ -57,13 +57,13 @@ NSAPI_PUBLIC int nsapi_perl_init(pblock * pb, Session * sn, Request * rq)
     SV *perl_version;
     int exitstatus, i, perl_argc;
 
-#ifdef NP_THREAD_SAFE
+#ifdef NP_USE_CRITICAL
     handler_crit = crit_init();
 #endif
 
     /* enable tracing ? */
     if ((tf = pblock_findval("tracelog", pb)) && (tfp = fopen(tf, "a+"))) {
-#ifdef NP_THREAD_SAFE
+#ifdef NP_USE_CRITICAL
 	traceLog_crit = crit_init();
 #endif
 	trace = 1;
@@ -201,7 +201,7 @@ NSAPI_PUBLIC int nsapi_perl_handler(pblock * pb, Session * sn, Request * rq)
     if (!(sub = pblock_findval("sub", pb)))
 	sub = "handler";
 
-#ifdef NP_THREAD_SAFE
+#ifdef NP_USE_CRITICAL
     /* Enter critical section; needed for !threaded Perl */
     crit_enter(handler_crit);
 #endif
@@ -224,7 +224,7 @@ NSAPI_PUBLIC int nsapi_perl_handler(pblock * pb, Session * sn, Request * rq)
 	/* Require the module; let Perl handle %INC stuff */
 	if (nsapi_perl_require_module(sn, rq, module) < 0) {
 	    SvREFCNT_dec(handler);
-#ifdef NP_THREAD_SAFE
+#ifdef NP_USE_CRITICAL
 	    crit_exit(handler_crit);
 #endif
 	    return REQ_ABORTED;
@@ -283,7 +283,7 @@ NSAPI_PUBLIC int nsapi_perl_handler(pblock * pb, Session * sn, Request * rq)
 		      module, sub, sv_count, sv_objcount));
 
     /* Leave critical section */
-#ifdef NP_THREAD_SAFE
+#ifdef NP_USE_CRITICAL
     crit_exit(handler_crit);
 #endif
 
@@ -366,14 +366,14 @@ NSAPI_PUBLIC void traceLog(char *fmt,...)
     va_list marker;
 
     va_start(marker, fmt);
-#ifdef NP_THREAD_SAFE
+#ifdef NP_USE_CRITICAL
     crit_enter(traceLog_crit);
 #endif
     if (tfp) {
 	vfprintf(tfp, fmt, marker);
 	fflush(tfp);
     }
-#ifdef NP_THREAD_SAFE
+#ifdef NP_USE_CRITICAL
     crit_exit(traceLog_crit);
 #endif
     va_end(marker);

@@ -32,7 +32,7 @@ Proceed? [y]
 EOM
 {
     my $default_answer = 'y';
-    my $answer = <>;
+    my $answer = <STDIN>;
     chomp $answer;
     $answer = ($answer or $default_answer);
     $answer =~ /^y/i or exit;
@@ -46,7 +46,7 @@ print <<EOM;
 Enter your Netscape server's root directory:
 EOM
 {
-    $ns_server_root = <>;
+    $ns_server_root = <STDIN>;
     chomp $ns_server_root;
     $ns_server_root =~ s#(\/|\\)+$##;
     $ns_server_root =~ s#\\#\/#;
@@ -65,7 +65,7 @@ be found: [$possible_ns_inc_dir]
 EOM
 {
     my($default_answer) = $possible_ns_inc_dir;
-    my $answer = <>;
+    my $answer = <STDIN>;
     chomp $answer;
     $ns_inc_dir = ($answer or $default_answer);
 }
@@ -81,7 +81,7 @@ nsapi_perl_init.pl start-up script:
 EOM
 {
     my $default_answer = "$ns_server_root/lib";
-    my $dir = <>;
+    my $dir = <STDIN>;
     chomp $dir;
     $dir = ($dir or $default_answer);
     $dir =~ s#(\/|\\)+$##;
@@ -104,7 +104,7 @@ Enable nsapi_perl tracing? [y]
 EOM
 {
     my $default_answer = 'y';
-    my $answer = <>;
+    my $answer = <STDIN>;
     chomp $answer;
     $answer = ($answer or $default_answer);
     $enable_np_tracing = 1 if $answer =~ /^y/i;
@@ -150,7 +150,7 @@ EOM
     }
     {
 	my $default_answer = '1';
-	my $answer = <>;
+	my $answer = <STDIN>;
 	chomp $answer;
 	$answer = ($answer or $default_answer);
 	$answer--;
