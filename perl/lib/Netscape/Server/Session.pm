@@ -3,7 +3,7 @@ package Netscape::Server::Session;
 # -------------------------------------------------------------------
 #   Session.pm - Perl interface to NSAPI Session structures
 #
-#   Copyright (C) 1997 Benjamin Sugars
+#   Copyright (C) 1997, 1998 Benjamin Sugars
 #
 #   This is free software; you can redistribute it and/or modify it
 #   under the same terms as Perl itself.
@@ -19,7 +19,7 @@ package Netscape::Server::Session;
 # -------------------------------------------------------------------
 
 use strict;
-use vars qw($VERSION @ISA @EXPORT @EXPORT_OK);
+use vars qw(@ISA @EXPORT @EXPORT_OK);
 
 require Exporter;
 require DynaLoader;
@@ -31,7 +31,6 @@ require DynaLoader;
 @EXPORT = qw(
 	
 );
-$VERSION = '0.01';
 
 # bootstrap Netscape::Server::Session $VERSION;
 
@@ -60,7 +59,8 @@ Netscape::Server::Session - Perl interface to Netscape server Session
      $sn->protocol_status($rq, $status, $reason);
      $proceed = $sn->protocol_start_response($rq);
      $sn->net_write($message);
-     $sn->net_read($length, $offset);
+     $sn->net_read($length, $timeout);
+     $sn->sys_net_read($length, $offset);
      ...
  }
 
@@ -196,19 +196,32 @@ data to the client.
 
 =item B<net_read>
 
- $sn->net_read($length, $offset);
+ $sn->net_read($length);
+ $sn->net_read($length, $timeout);
 
 Reads $length bytes of data from the body of this Session's http
-request.  If $offset is specified, the reading begins at that position
-in the request body rather than at the beginning.  This method can be
-used to read HTML form data sent to the server by a client; see, for
-instance, the READ method in Netscape::Server::Socket.
+request. If $timeout is specified, its default value of 10 seconds is
+overridden. In the event of an error, $! is set to reflect errno.
+
+=item B<sys_net_read>
+
+ $sn->sys_net_read($buffer, $length, $offset);
+
+Reads $length bytes of data from the body of this Session's http
+request into $buffer.  If $offset is specified, the content read will
+will written to $buffer starting at position $offset in
+$buffer. $buffer will grow or shrink as necessary. It returns the
+number of bytes read. This method can be used to read HTML form data
+sent to the server by a client; see, for instance, the READ method in
+Netscape::Server::Socket.
 
 =back
 
 =head1 AUTHOR
 
 Benjamin Sugars <bsugars@canoe.ca>
+
+Contributions by Olivier Dehon <dehon_olivier@jpmorgan.com>.
 
 =head1 SEE ALSO
 

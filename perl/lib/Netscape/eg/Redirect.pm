@@ -1,4 +1,4 @@
-package Netscape::Redirect;
+package Netscape::eg::Redirect;
 use strict;
 use Netscape::Server qw/:all/;
 

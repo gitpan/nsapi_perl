@@ -1,11 +1,29 @@
 package Netscape::Registry;
 
+# -------------------------------------------------------------------
+#   Registry.pm - emulate perl CGI programming under nsapi_perl
+#
+#   Copyright (C) 1997, 1998 Benjamin Sugars
+#
+#   This is free software; you can redistribute it and/or modify it
+#   under the same terms as Perl itself.
+#
+#   This software is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this software. If not, write to the Free Software
+#   Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+# -------------------------------------------------------------------
+
 # --- Attempt to emulate Apache::Registry for nsapi_perl
 require Exporter;
 use File::Basename;
 use Netscape::Server::Socket;
 use Netscape::Server qw/:all/;
-#use strict;
+#use strict; # - See Apache::Registry :-)
 use subs qw/
     _cgi_env
     /;
@@ -20,6 +38,8 @@ use vars qw/
 @EXPORT_OK = qw/
     exit
     /;
+
+my $Is_Win32 = $^O eq "MSWin32";
 
 sub handler {
     my($pb, $sn, $rq) = @_;
@@ -40,7 +60,7 @@ sub handler {
 	log_error(LOG_FAILURE, $sub, $sn, $rq, "$path: not a plain file");
 	return REQ_ABORTED;
     }
-    unless (-x _) {
+       unless ($Is_Win32 or -x _) {
 	log_error(LOG_FAILURE, $sub, $sn, $rq, "$path: cannot execute");
 	return REQ_ABORTED;
     }
@@ -98,7 +118,7 @@ sub handler {
 CGI_PROGRAM: {
     package $package;
     use Netscape::Registry qw/exit/;
-    # --- nsapi_perl.conf might have mucked if @INC
+    # --- nsapi_perl_init.pl might have mucked if @INC
     \@INC = \@lib::ORIG_INC if \@lib::ORIG_INC;
     sub cgi_program {
         $program
@@ -167,7 +187,7 @@ sub _cgi_env {
     $env{'PATH_TRANSLATED'} = $rq->vars('ntrans-base') . $env{'PATH_INFO'} if
 	(defined $rq->vars('ntrans-base') and defined $env{'PATH_INFO'});
     $env{'SCRIPT_NAME'} = $rq->reqpb('uri'); $env{'SCRIPT_NAME'} =~ s/$env{'PATH_INFO'}$//;
-    $env{'GATEWAY_INTERFACE'} = 'CGI/1.1; nsapi_perl/0.16';
+    $env{'GATEWAY_INTERFACE'} = "CGI/1.1; nsapi_perl/$Netscape::Server::VERSION";
     $env{'CONTENT_LENGTH'} = $rq->headers('content-length') if defined $rq->headers('content-length');
     $env{'CONTENT_TYPE'} = $rq->headers('content-type') if defined $rq->headers('content-type');
 
@@ -193,13 +213,6 @@ In F<obj.conf>
  ObjectType fn="force-type" type="application/perl"
  Service fn="nsapi_perl_handler" module="Netscape::Registry"
  </Object>
-
-In F<nsapi_perl.conf>
-
- package Netscape::Server::Config;
- use Netscape::Server::Request;
- use Netscape::Server::Session;
- use Netscape::Registry;
 
 =head1 DESCRIPTION
 

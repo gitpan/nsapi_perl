@@ -3,7 +3,7 @@ package Netscape::Server;
 # -------------------------------------------------------------------
 #   Server.pm - Perl module to integrate Netscape web server
 #
-#   Copyright (C) 1997 Benjamin Sugars
+#   Copyright (C) 1997, 1998 Benjamin Sugars
 #
 #   This is free software; you can redistribute it and/or modify it
 #   under the same terms as Perl itself.
@@ -34,6 +34,7 @@ require DynaLoader;
     LOG_SECURITY
     LOG_WARN
     log_error
+    func_exec
     protocol_codes
     PROTOCOL_BAD_REQUEST
     PROTOCOL_FORBIDDEN
@@ -88,7 +89,7 @@ require DynaLoader;
 		'all' => [ @EXPORT_OK ],
 		);
 
-$VERSION = '0.16';
+$VERSION = '0.20';
 
 sub AUTOLOAD {
     # --- This AUTOLOAD subroutine is kind of weired because 3.x servers
@@ -138,6 +139,7 @@ Netscape::Server - framework for integrating Perl and Netscape servers
  use Netscape::Server qw/:all/;
 
  log_error($degree, $sub, $sn, $rq, $gripe);
+ func_exec($fname, $sn, $rq, $args);
 
 =head1 DESCRIPTION
 
@@ -265,17 +267,8 @@ The server has been asked to do something it knows it cannot do.
 
 Error-logging codes are used by subroutines when an error has
 occurred.  In particular, when an error occurs, the subroutine should
-call the subroutine I<log_error> (defined in and importable from
-Netscape::Server).  I<log_error> has the following usage
-
- log_error($degree, $sub, $sn, $rq, $gripe);
-
-I<$degree> is one of the constants defined below; it specifies the
-severity of your problem.  I<$sub> is a string that should contain the
-name of the subroutine producing the error.  I<$sn> is an instance of
-Netscape::Server::Session.  I<$rq> is an instance of
-Netscape::Server::Request.  $gripe is an excuse for the error you have
-begat; make it a good one.
+call the function log_error(); see L</FUNCTIONS> for more
+details.
 
 =over 4
 
@@ -303,6 +296,26 @@ A problem internal to your subroutine.
 
 A non-recoverable server error.
 
+=back
+
+=head1 FUNCTIONS
+
+The following functions may be imported in to the calling package's
+namespace.
+
+=over 4
+
+=item B<log_error>
+
+ $success = log_error($degree, $sub, $sn, $rq, $gripe);
+
+I<$degree> is one of the constants defined in L</Error-Logging Code>;
+it specifies the severity of your problem.  I<$sub> is a string that
+should contain the name of the subroutine producing the error.  I<$sn>
+is an instance of Netscape::Server::Session.  I<$rq> is an instance of
+Netscape::Server::Request.  $gripe is an excuse for the error you have
+begat; make it a good one.
+
 I<log_error> returns true if the error has been successfully logged;
 I<undef> otherwise (Note: the log_error function for the servers I
 have access to produces different return values than what the
@@ -310,6 +323,23 @@ documentation says I should expect.  I have built the perl log_error()
 function based on the return values I have emprically determined.  If
 Netscape changes their API to agree with the documentation, the
 perl log_error() function might break.)
+
+=item B<func_exec>
+
+ $proceed = func_exec($fname, $sn, $rq, $args);
+ $proceed = func_exec($fname, $sn, $rq);
+
+Call a function from the NSAPI. Returns REQ_ABORTED if no function was
+executed, or the return code of the called function. I<$fname> is the
+function name, as it would appear in a directive line from
+obj.conf. I<$sn> is an instance of Netscape::Server::Session. I<$rq>
+is an instance of Netscape::Server::Request. The optional I<$args> is
+a reference to a hash containing argument and value pairs.
+
+Example:
+
+  $proceed = func_exec('find-index', $sn, $rq,
+               {'index-names' => 'my_index'});
 
 =back
 
@@ -338,13 +368,17 @@ This tag also imports the I<log_error()> function.
 
 =item I<:all>
 
-Import all constant symbols and the I<log_error()> function.
+Import all constant symbols, the I<log_error()> and I<func_exec()>
+functions.
 
 =back
 
 =head1 AUTHOR
 
 Benjamin Sugars <bsugars@canoe.ca>
+
+Contributions from Steve Nielsen <spn@enteract.com> and Olivier Dehon
+<dehon_olivier@jpmorgan.com>.
 
 =head1 SEE ALSO
 

@@ -8,8 +8,9 @@ Bugs in Netscape::Server and related modules
 -When using rq->vars to iterate over the hash, eg "keys %{rq->vars}",
 you get an infinite loop.
 -Sometimes the name of a handler will be lost resulting in undefined
-subroutine errors.
+subroutine errors (I think this has mostly been fixed now).
 -I see an occasional panic now and again :-)
+-Threads.  See the README file, and be patient.
 
 Bugs related to CGI.pm/Registry.pm
 ----------------------------------

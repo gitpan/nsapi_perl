@@ -1,7 +1,7 @@
 /* -------------------------------------------------------------------
     nsapi_perl.c - header file for nsapi_perl
 
-    Copyright (C) 1997 Benjamin Sugars
+    Copyright (C) 1997, 1998 Benjamin Sugars
 
     This is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself.
@@ -25,4 +25,14 @@
 void xs_init _((void));
 SV *nsapi_perl_bless_request(Request *);
 SV *nsapi_perl_bless_session(Session *);
-SV *nsapi_perl_pblock2hash_ref(pblock *);
+NSAPI_PUBLIC SV *nsapi_perl_pblock2hash_ref(pblock *);
+NSAPI_PUBLIC void traceLog(char *, ...);
+int nsapi_perl_eval_ok(Session *, Request *);
+int nsapi_perl_require_module(Session *, Request *, char *);
+
+/* nsapi_perl trace facility */
+#ifdef PERL_TRACE
+#define NP_TRACE(a) if(trace) a;
+#else
+#define NP_TRACE(a)
+#endif

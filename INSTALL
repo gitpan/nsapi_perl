@@ -14,103 +14,80 @@
 
         *** This is alpha software -- use at your own risks ***
 
-INSTALL file for nsapi_perl version 0.16.
+INSTALL file for nsapi_perl version 0.20.
 
 
 Introduction
 ------------
 
-I'm afraid the current installation process is somewhat boneheaded.
-Basically this is because nsapi_perl integrates two very different
-systems: Perl and the Netscape web server.  Each has likely been built
-with its own peculiar compilation and linking options unique to the
-build environment.
+Building nsapi_perl should be relatively straight-forward on Solaris
+and NT.  Thanks to Steve Nielsen for contributing a Makefile.PL that
+smoothes the Win32 install considerably.
 
-For Perl it's fairly easy to find what options were used to build it
-using the Config.pm module.  Unfortunately I have found that those
-options do not necessarily work for building NSAPI functions.  The
-problem is especially acute during the linking stage.
+You should be able to install nsapi_perl on Unix platforms other than
+Solaris, but it may require some mucking with the install process.  If
+you succeed, please let me (Ben Sugars, bsugars@canoe.ca) know so that
+I can incorporate any changes you had to make in the next release.
 
-The end result is that before building, you must look at the
-Makefile.PL found in this directory and manually set the correct set
-of compilation and linking options.  If there is a conflict, for
-instance if the Perl linking command is different from the NSAPI
-linking command, I recommend using the option that works for NSAPI.
-
-Makefile.PL will write two Makefiles.  One Makefile builds the
+The basic idea is to run a Makefile.PL Perl script that will generate
+two additional Makefile.PL perl scripts.  One Makefile.PL builds the
 nsapi_perl.so shared object that slurps Perl into Netscape.  The other
-Makefile builds the Perl extension modules that represent the Perl
-version of the NSAPI programming environment.  Once the Makefiles have
-been generated, each component is built and installed separately.
+Makefile.PL builds the Perl extension modules that represent the Perl
+version of the NSAPI programming environment.  Once the Makefile.PL
+Perl scripts have been generated, each component is compiled and
+installed separately.
 
 Enough introduction.  Here are the details
 
 Steps
 -----
 
-1.  Edit the Makefile.PL found in this directory.
+(The following commands assume Unix-ness.  Of course, if you're on NT
+your path separator will be \ )
 
-    In this file are configuration variable setting the compilation
-    and linking options for your environment.  You will also find
-    variables specifying. the location of your Netscape server.  In
-    Makefile.PL whenever you see something like
+1.  perl ./Makefile.PL
 
-         $foo = $Config{foo};
+    This will ask you some questions regarding the location of your
+    Netscape server, NSAPI compilation options, and so on.  It will
+    then proceed to create two Makefiles.  One will be in ./nsapi,
+    where the NSAPI code that slurps Perl into Netscape lives.  The
+    other will be created in ./perl/lib/Netscape where the Perl
+    extension module code lives.  I recommend examining each Makefile
+    to see if the compilation and linking options look right.
 
-    it means that Makefile.PL will use the same value for 'foo' as was
-    used when compiling perl.  If you don't think this value will be
-    acceptable, just change it to
+2.  cd ./nsapi
+    perl Makefile.PL
+    make
+    make install
 
-         $foo = '/some/hard-coded/value/here';
+    These commands will (or should) compile, link, and install an
+    NSAPI shared object that the server can link to at runtime to
+    slurp Perl into Netscape.
 
-2.  perl ./Makefile.PL
+4.  cd ../perl/lib/Netscape
+    perl Makefile.PL
+    make
+    make install
 
-    This will create two Makefiles.  One will be in ./nsapi, where the
-    NSAPI code that slurps Perl into Netscape lives.  The other will
-    be created in ./perl/lib/Netscape where the Perl extension module
-    code lives.  I recommend examining each Makefile to see if the
-    compilation and linking options look right.
+    These command will (or should) compile and install a set of Perl
+    extension modules (in the Netscape::* hierarchy) that will be used
+    by any Perl modules you write or use for nsapi_perl.
 
-3.  cd ./nsapi; make
-
-    This will (or should) build a shared object file called
-    nsapi_perl.so.  This is the shared object that the Netscape server
-    links to at run and is responsible for slurping Perl into
-    Netscape.
-
-4.  cd ../perl/lib/Netscape; make
-
-    This will (or should) build the Perl extension modules that you
-    will use when doing NSAPI programming in Perl.
-
-5.  cd ../../../nsapi; make install
-
-    This will install the nsapi_perl.so and nsapi_perl.conf files in a
-    directory that you specified in Makefile.PL.  It will also echo to
-    your screen the lines you will need to add to your server
-    obj.conf file to enable Perl (if you miss these lines, don't
-    worry, I'll explain them later in this document.)
-
-6.  cd ../perl/lib/Netscape; make install
-
-    This will install the Perl extension modules in the standard
-    location for Perl extensions on your system.
-
-7.  Edit your Netscape server obj.conf file.
+5.  Edit your server config files so that Netscape knows about
+    nsapi_perl.
 
     The following lines will need to be added to your Netscape server
     obj.conf file.
-        Init fn=load-modules shlib=$ns_inst_dir/nsapi_perl.so funcs=nsapi_perl_init,nsapi_perl_handler
-        Init fn=nsapi_perl_init conf=$ns_inst_dir/nsapi_perl.conf
-    The value of $ns_inst_dir is that as specified in Makefile.PL.
+        Init fn=load-modules
+             shlib=$plugin_dir/nsapi_perl.so
+             funcs=nsapi_perl_init,nsapi_perl_handler
+        Init fn=nsapi_perl_init
+             init-script=$plugin_dir/nsapi_perl_init.pl
+    The value of $plugin_dir where the NSAPI shared object has been
+    installed.  This location is determined when running the top-level
+    Makefile.PL from step 1.
 
-    The first line tells the Netscape server to link to the named
-    shared object at runtime.  The second line tells the server to run
-    the function called nsapi_perl_init (found in nsapi_perl.so) at
-    server startup.  This function creates a perl interpreter which
-    then parses and runs the nsapi_perl.conf configuration file
-
-8. Try running your server.
+6. Try running your server.
 
     Start your server the usual way.  You should see a message like
         nsapi_perl_init: loaded a perl version 5.00401 interpreter
@@ -137,7 +114,7 @@ My immediate goal for nsapi_perl is to make the install process easier
 and cross-platform.  The more we learn about what it takes to build on
 different systems, the better.
 
--Problems seem to occur when using nsapi_perl in conjuction with a
+-Problems seem to occur when using nsapi_perl in conjunction with a
 Perl that:
      -has not been compiled to use the shared libperl.so;
      -has been compiled to have binary compatibility with 5.003.
@@ -147,20 +124,6 @@ only workaround seems to be recompiling Perl so that it agrees with
 nsapi_perl.  In other words, your Perl should be compiled to use
 libperl.so and it should *not* have binary compatibility with 5.003.
 
--If someone can write a Makefile.PL that will automatically deduce (or
-at least suggest) all the right compilation and linking options for
-any target platform, you will be the subject of great praise in the
-CREDITS file.  (The preceding was a blatant request for assistance
-from the Perl community).
-
--nsapi_perl *should* work on a Win32 system that has previously built
-Perl and can run NSAPI.  Obviously however, the preceding
-installation instructions are painfully Unix-centric.  If you are a
-Win32 user, at this time I can only suggest you roll your own.  If you
-are successful please send me (bsugars@canoe.ca) an email letting me
-know what you had to do.  You will then be the subject of *great*
-praise in the CREDITS file.
-
 -Ben Sugars
 <bsugars@canoe.ca>
-January 8, 1997
+February 12, 1998

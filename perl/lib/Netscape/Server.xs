@@ -1,7 +1,7 @@
 /* -------------------------------------------------------------------
     Server.xs - Perl extension to integrate Netscape web server
 
-    Copyright (C) 1997 Benjamin Sugars
+    Copyright (C) 1997, 1998 Benjamin Sugars
 
     This is free software; you can redistribute it and/or modify it
     under the same terms as Perl itself.
@@ -27,6 +27,7 @@ extern "C" {
 #include "frame/req.h"
 #include "frame/protocol.h"
 #include "frame/log.h"
+#include "frame/func.h"
 #include "EXTERN.h"
 #include "perl.h"
 #include "XSUB.h"
@@ -37,7 +38,7 @@ extern "C" {
 
 static int
 not_here(s)
-     char *s;
+char *s;
 {
   croak("%s not implemented on this architecture", s);
   return -1;
@@ -191,11 +192,11 @@ int arg;
   return 0;
 }
 
-int post2qstr(netbuf *buf, char *qstr, int clen, int offset) {
+int post2qstr(netbuf *buf, char *qstr, int clen) {
   /* This function is borrowed (almost) verbatim from
      http://help.netscape.com/kb/server/960513-118.html. */
   int ichar = 1;  /* char read in from netbuf */
-
+  int offset = 0;
   /*
      Loop through reading a character and writing it to qstr, until
      either len characters have been read, there's no more input,
@@ -267,6 +268,46 @@ log_error(degree, sub, session, request, gripe)
        PUSHs(sv_2mortal(newSVsv(&sv_undef)));
      }
 
+int
+func_exec(fname, session, request, args=NULL)
+     char* fname
+     Session* session
+     Request* request
+     char* args
+  PREINIT:
+     int nargs;
+     pblock *pb;
+     HV *hash = NULL;
+  CODE:
+     if(args) {
+ # Check validity of last param, if provided
+       if(SvROK(ST(3)) && SvTYPE(SvRV(ST(3))) == SVt_PVHV) {
+         hash = (HV *)SvRV(ST(3));
+         nargs = 1 + hv_iterinit(hash);
+       } else {
+         croak("The last parameter must be a hash reference");
+       }
+     } else {
+       nargs = 1;
+     }
+     pb = pblock_create(nargs);
+     pblock_nvinsert("fn", fname, pb);
+     while(--nargs) {
+       char *key;
+       I32 klen;
+       SV *value = hv_iternextsv(hash, &key, &klen);
+
+       if(SvPOK(value)) {
+         pblock_nvinsert(key, SvPV(value, na), pb);
+       } else {
+         warn("Value is not a string for %s, ignoring", key);
+       }
+     }
+     RETVAL = func_exec(pb, session, request);
+     pblock_free(pb);
+  OUTPUT:
+     RETVAL
+
 MODULE = Netscape::Server		PACKAGE = Netscape::Server::Session
 
  # These functions implement Netscape::Server::Session
@@ -279,7 +320,7 @@ remote_addr(session)
      char* remote_addr;
    PPCODE:
      remote_addr = pblock_findval("ip", session->client);
-     remote_addr == NULL ? XSRETURN_UNDEF : XSRETURN_PV(remote_addr);
+     if(remote_addr == NULL) XSRETURN_UNDEF; else XSRETURN_PV(remote_addr);
 
 void
 remote_host(session)
@@ -288,7 +329,7 @@ remote_host(session)
      char* remote_host;
    PPCODE:
      remote_host = session_dns(session);
-     remote_host == NULL ? XSRETURN_PV(pblock_findval("ip", session->client)) : XSRETURN_PV(remote_host);
+     if(remote_host == NULL) XSRETURN_PV(pblock_findval("ip", session->client)); else XSRETURN_PV(remote_host);
 
  # These methods implement some standard NSAPI functions that
  # expect a Session* to be passed to them
@@ -308,24 +349,69 @@ protocol_start_response(session, request)
 int
 net_write(session, message)
      Session* session
-     char* message
+     SV* message
    CODE:
-     RETVAL = net_write(session->csd, message, strlen(message));
+     RETVAL = net_write(session->csd, SvPV(message, na), SvCUR(message));
    OUTPUT:
      RETVAL
 
 void
-net_read(session, size, offset=0)
+net_read(session, size, timeout=10)
      Session* session
+     int size
+     int timeout
+   PREINIT:
+     int bytes_read = 0;
+     int left = size;
+     char *inbuf = MALLOC(size);
+   PPCODE:
+     while(left > 0) {
+       int bytes = net_read(session->csd, inbuf+bytes_read, left, timeout);
+       if(bytes <= 0) {
+	 FREE(inbuf);
+         sv_setnv(perl_get_sv("main::!", 0), (double)errno);
+         XSRETURN_UNDEF;
+       }
+       left -= bytes;
+       bytes_read += bytes;
+     }
+     XPUSHs(sv_2mortal(newSVpv(inbuf, size)));
+     FREE(inbuf);
+     XSRETURN(1);
+     
+void
+sys_net_read(session, buffer, size, offset=0)
+     Session* session
+     char* buffer
      int size
      int offset
    PREINIT:
-     char* buffer;
+ # Typemap translation sets na to buffer's length.
+ # buffer might contain NULL chars, because it
+ # usually contains what's been read by a former
+ # call to sys_net_read
+     char* readbuf;
      int bytes_read;
+     char* newbuf;
+     int buflen = na;
    PPCODE:
-     buffer = (char *)MALLOC(size + 1);
-     bytes_read = post2qstr(session->inbuf, buffer, size, offset);
-     bytes_read >= 0 ? XSRETURN_PV(buffer) : XSRETURN_UNDEF;
+     readbuf = (char *)MALLOC(size + 1);
+     bytes_read = post2qstr(session->inbuf, readbuf, size);
+     if(bytes_read > 0) {
+ # Modify the scalar buffer
+       newbuf = MALLOC(bytes_read + offset + 1);
+       if(buflen > offset) {
+         buflen = offset;
+       }
+ # memcpy should probably be used instead of strncpy
+ # my strncpy copies NULL chars, what about yours?
+       strncpy(newbuf, buffer, buflen);
+       strncpy(newbuf + offset, readbuf, bytes_read);
+       sv_setpvn(ST(1), newbuf, buflen + bytes_read);
+       FREE(newbuf);
+     }
+     FREE(readbuf);
+     XSRETURN_IV(bytes_read);
 
 MODULE = Netscape::Server		PACKAGE = Netscape::Server::Request	
 
@@ -338,7 +424,7 @@ auth_type(request, auth_type=NULL)
      char* auth_type
    PPCODE:
      auth_type = pblock_access(request->vars, "auth-type", auth_type);
-     auth_type == NULL ? XSRETURN_UNDEF : XSRETURN_PV(auth_type);
+     if(auth_type == NULL) XSRETURN_UNDEF; else XSRETURN_PV(auth_type);
 
 void
 path_info(request, path_info=NULL)
@@ -346,7 +432,7 @@ path_info(request, path_info=NULL)
      char* path_info
    PPCODE:
      path_info = pblock_access(request->vars, "path-info", path_info);
-     path_info == NULL ? XSRETURN_UNDEF : XSRETURN_PV(path_info);
+     if(path_info == NULL) XSRETURN_UNDEF; else XSRETURN_PV(path_info);
 
 void
 query_string(request, query_string=NULL)
@@ -354,7 +440,7 @@ query_string(request, query_string=NULL)
      char* query_string
    PPCODE:
      query_string = pblock_access(request->reqpb, "query", query_string);
-     query_string == NULL ? XSRETURN_UNDEF : XSRETURN_PV(query_string);
+     if(query_string == NULL) XSRETURN_UNDEF; else XSRETURN_PV(query_string);
 
 void
 remote_user(request, remote_user=NULL)
@@ -362,7 +448,7 @@ remote_user(request, remote_user=NULL)
      char* remote_user
    PPCODE:
      remote_user = pblock_access(request->headers, "auth-user", remote_user);
-     remote_user == NULL ? XSRETURN_UNDEF : XSRETURN_PV(remote_user);
+     if(remote_user == NULL) XSRETURN_UNDEF; else XSRETURN_PV(remote_user);
 
 void
 request_method(request, request_method=NULL)
@@ -370,7 +456,7 @@ request_method(request, request_method=NULL)
      char* request_method
    PPCODE:
      request_method = pblock_access(request->reqpb, "method", request_method);
-     request_method == NULL ? XSRETURN_UNDEF : XSRETURN_PV(request_method);
+     if(request_method == NULL) XSRETURN_UNDEF; else XSRETURN_PV(request_method);
 
 void
 server_protocol(request, server_protocol=NULL)
@@ -378,7 +464,7 @@ server_protocol(request, server_protocol=NULL)
      char* server_protocol
    PPCODE:
      server_protocol = pblock_access(request->reqpb, "protocol", server_protocol);
-     server_protocol == NULL ? XSRETURN_UNDEF : XSRETURN_PV(server_protocol);
+     if(server_protocol == NULL) XSRETURN_UNDEF; else XSRETURN_PV(server_protocol);
 
 void
 user_agent(request, user_agent=NULL)
@@ -386,8 +472,43 @@ user_agent(request, user_agent=NULL)
      char* user_agent
    PPCODE:
      user_agent = pblock_access(request->headers, "user-agent", user_agent);
-     user_agent == NULL ? XSRETURN_UNDEF : XSRETURN_PV(user_agent);
+     if(user_agent == NULL) XSRETURN_UNDEF; else XSRETURN_PV(user_agent);
 
+void
+cinfo_find(request, uri=NULL)
+     Request *request
+     char *uri
+   PREINIT:
+     cinfo *type_info;
+   PPCODE:
+     if(items == 1) {
+       uri = pblock_findval("uri", request->reqpb);
+     }
+     if(uri) {
+       type_info = cinfo_find(uri);
+       if(type_info) {
+         EXTEND(sp, 3);
+         if(type_info->type) {
+	   PUSHs(sv_2mortal(newSVpv(type_info->type, 0)));
+         } else {
+	   PUSHs(sv_2mortal(newSVsv(&sv_undef)));
+         }
+         if(type_info->encoding) {
+	   PUSHs(sv_2mortal(newSVpv(type_info->encoding, 0)));
+         } else {
+	   PUSHs(sv_2mortal(newSVsv(&sv_undef)));
+         }
+         if(type_info->language) {
+	   PUSHs(sv_2mortal(newSVpv(type_info->encoding, 0)));
+         } else {
+	   PUSHs(sv_2mortal(newSVsv(&sv_undef)));
+         }
+         FREE(type_info);
+         XSRETURN(3);
+       }
+     }
+     PUSHs(sv_2mortal(newSVsv(&sv_undef)));
+     XSRETURN(1);
 
  # These methods implement some standard NSAPI functions that
  # expect a Request* to be passed to them
@@ -429,7 +550,7 @@ vars(request, key=NULL, value=NULL)
      }
      else if (items == 2 || items == 3) {
        value = pblock_access(request->vars, key, value); 
-       value == NULL ? XSRETURN_UNDEF : XSRETURN_PV(value);
+       if(value == NULL) XSRETURN_UNDEF; else XSRETURN_PV(value);
      }
 
 void
@@ -448,7 +569,7 @@ reqpb(request, key=NULL, value=NULL)
      }
      else if (items == 2 || items == 3) {
        value = pblock_access(request->reqpb, key, value); 
-       value == NULL ? XSRETURN_UNDEF : XSRETURN_PV(value);
+       if(value == NULL) XSRETURN_UNDEF; else XSRETURN_PV(value);
      }
 
 void
@@ -467,7 +588,7 @@ headers(request, key=NULL, value=NULL)
      }
      else if (items == 2 || items == 3) {
        value = pblock_access(request->headers, key, value); 
-       value == NULL ? XSRETURN_UNDEF : XSRETURN_PV(value);
+       if(value == NULL) XSRETURN_UNDEF; else XSRETURN_PV(value);
      }
 
 void
@@ -487,6 +608,6 @@ srvhdrs(request, key=NULL, value=NULL)
      else if (items == 2 || items == 3) {
  # Return or set the named value
        value = pblock_access(request->srvhdrs, key, value); 
-       value == NULL ? XSRETURN_UNDEF : XSRETURN_PV(value);
+       if(value == NULL) XSRETURN_UNDEF; else XSRETURN_PV(value);
      }
 

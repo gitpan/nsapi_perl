@@ -1,5 +1,23 @@
 package Netscape::Server::Socket;
 
+# -------------------------------------------------------------------
+#   Socket.pm - Netscape httpd/client socket class
+#
+#   Copyright (C) 1998 Benjamin Sugars
+#
+#   This is free software; you can redistribute it and/or modify it
+#   under the same terms as Perl itself.
+#
+#   This software is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this software. If not, write to the Free Software
+#   Foundation, 675 Mass Ave, Cambridge, MA 02139, USA.
+# -------------------------------------------------------------------
+
 use Netscape::Server qw/:all/;
 use strict;
 
@@ -40,15 +58,22 @@ sub PRINTF {
 
 sub READ {
     # --- Skip over the second parameter since we're writing to it directly.
-    my($self, $length, $offset);
+    my($self, $buffer, $length, $offset, $bytes_read);
     ($self, undef, $length, $offset) = @_;
     
-    # --- Just read from the socket
-    $_[1] = $self->{'session'}->net_read($length, $offset);
-
-    # --- Return the number of bytes read
-    return length($_[1]);
+    # --- Just read from the socket and return the number of bytes read
+    $bytes_read = $self->{'session'}->sys_net_read($buffer, $length, $offset);
+    $_[1] = $buffer;
+    return $bytes_read;
 }
+
+#XXX need to implement
+#sub GETC {
+#}
+
+#XXX need to implement
+#sub READLINE {
+#}
 
 # --- Methods below here are probably private
 sub _send_header {

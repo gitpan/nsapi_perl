@@ -1,4 +1,4 @@
-package Netscape::HelloWorld;
+package Netscape::eg::HelloWorld;
 use strict;
 use Netscape::Server qw/:all/;
 
@@ -19,7 +19,6 @@ sub handler {
     
     # --- Set status to 200 OK
     $sn->protocol_status($rq, PROTOCOL_OK);
-    
     # --- Initiate response
     $proceed = $sn->protocol_start_response($rq);
     if ($proceed == REQ_PROCEED) {

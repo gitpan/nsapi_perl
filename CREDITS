@@ -1,16 +1,21 @@
 Thanks to Steve Nielsen <Steve.Nielsen@infores.com> and Craig Riter
-<criter@riter.com> for offering to help with the Win32 build process.
-Steve has sent me a jumbo patch which should simplify this process
-considerably; I have not yet has the chance to incorporate these
-changes.
+<criter@riter.com> for helping with getting this thing working on
+Win32.  Thanks especially to Steve who provided a Makefile.PL that
+works on Win32 and found (and fixed) several other bugs for all
+platforms.
 
-Thanks also to Olivier Dehon <dehon_olivier@jpmorgan.com> for finding
-(and fixing several bugs).  Olivier is also working on improving the
-(crude) way in which net_read() is currently implemented.
+Steve is currently working on making nsapi_perl's threading issues.
+
+Olivier Dehon <dehon_olivier@jpmorgan.com> found and fixed several
+bugs, including fixing the crude way I initially implemented net_read.
+
+Thanks also to Danny Sadinoff (dsadinof@olf.com).
 
 In spite of their help, all blame for bugs should be directed at me
 and not at my collabarators.
 
+Any contributions you can make are welcome!
+
 -Ben Sugars
 <bsugars@canoe.ca>
-January 27, 1997
+February 2, 1998

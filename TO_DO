@@ -17,11 +17,16 @@ module Foo, an ldd on Foo.so needs to show
         libperl.so =>    /lib/perl5/sun4-solaris/5.00401/CORE/libperl.so
 or something like that.
 
-Threading.  Grrrr.  Netscape *used* to let you run their
-multithreaded servers as multiprocess single-threaded servers if you
-wanted to.  The 3.x line doesn't let you do this, AFAIK.  So, we need
-a thread-safe libperl.so.  I know this is being worked on, but in the
-meantime, does anyone know if the libperl.so with 5.004 is OK to use?
+Threading.  Grrrr.  Netscape *used* to let you run their multithreaded
+servers as multiprocess single-threaded servers if you wanted to.  The
+3.x line doesn't let you do this, AFAIK.  So, we need a thread-safe
+Perl library.  Steve Nielsen (spn@enteract.com) is working on
+integrating the new threaded Perl with nsapi_perl.  Stay tuned.
+
+In the meantime, you can use nsapi_perl with a multi-threaded server
+(because the Perl hooks are enclosed in critical sections) but you do
+so at your own since if Perl hangs your whole server will freeze
+(because the Perl hooks are enclosed in critical sections).
 
 
 Wishes
@@ -32,6 +37,7 @@ Wishes
         -Authentication via DBI
         -Persistent database connections
         -Perl embedded in HTML documents
+        -Server configuration in Perl
 
 -Basically anything done by Apache/mod_perl I think could, in theory, be done
 with nsapi_perl.  (Of course, mod_perl has the advantage of being able to
@@ -39,4 +45,4 @@ poke around under the hood of its server.)
 
 -Ben Sugars
 <bsugars@canoe.ca>
-December 11, 1997
+February 12, 1998

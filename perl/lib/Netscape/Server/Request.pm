@@ -3,7 +3,7 @@ package Netscape::Server::Request;
 # -------------------------------------------------------------------
 #   Request.pm - Interface to NSAPI Request structure
 #
-#   Copyright (C) 1997 Benjamin Sugars
+#   Copyright (C) 1997, 1998 Benjamin Sugars
 #
 #   This is free software; you can redistribute it and/or modify it
 #   under the same terms as Perl itself.
@@ -19,12 +19,11 @@ package Netscape::Server::Request;
 # -------------------------------------------------------------------
 
 use strict;
-use vars qw($VERSION @ISA);
+use vars qw(@ISA);
 
 require DynaLoader;
 
 @ISA = qw(AutoLoader DynaLoader);
-$VERSION = '0.01';
 
 # Preloaded methods go here.
 

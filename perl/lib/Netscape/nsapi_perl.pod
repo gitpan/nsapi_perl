@@ -8,18 +8,17 @@ In F<obj.conf>
 
  Init fn="load-modules" shlib="/path/nsapi_perl.so"
       funcs="nsapi_perl_init,nsapi_perl_handler"
- Init fn="nsapi_perl_init" conf="/path/nsapi_perl.conf"
+ Init fn="nsapi_perl_init"
+      init-script="/path/nsapi_perl_init.pl"
+      tracelog="/tmp/nsapi_perl.log"
 
  <Object ppath="/document/root/path/*">
  Directive fn="nsapi_perl_handler"
       module="Netscape::ModuleName" sub="sub_name"
  </Object>
 
-In F<nsapi_perl.conf>
+In F<nsapi_perl_init.pl>
 
- package Netscape::Config;
- use Netscape::Server::Request;
- use Netscape::Server::Session;
  use Netscape::ModuleName;
 
 =head1 DESCRIPTION
@@ -34,13 +33,6 @@ Once the interpreter has been embedded the server can be configured so
 that at any point during a client session a Perl subroutine can be
 called.  These Perl subroutines are passed as arguments Perl objects
 that allow direct access to the server's API.
-
-At this point in time nsapi_perl is still embryonic.  The interface to
-the server API is provided, but as yet no modules using this interface
-are provided with the distribution.  This is where you come in: if you
-write a module that uses nsapi_perl let me (Ben Sugars,
-bsugars@canoe.ca) know about it so it widely distributed and so that
-you can get a prominent position in the CREDITS file.
 
 The rest of this document describes how to configure and use
 nsapi_perl; it also provides a couple of examples.  It is hoped that
@@ -60,12 +52,12 @@ nsapi_perl consists of the following components
 This is the shared object containing the NSAPI  functions that embed a
 Perl interpreter in the server and run the Perl subroutines.
 
-=item B<nsapi_perl.conf>
+=item B<nsapi_perl_init.pl>
 
-This is a small Perl program that is executed by a function within
-F<nsapi_perl.so> when the server starts.  F<nsapi_perl.conf> loads in the
-requisite modules needed by nsapi_perl subroutines.  It can also be
-used to define global configuration variables.
+This is a Perl program that is (optionally) executed when the server
+starts.  F<nsapi_perl_init.pl> can be used to load modules containing
+nsapi_perl subroutines at startup, or to predefine global (Perl)
+configuration variables.
 
 =item B<Netscape::Server>
 
@@ -75,7 +67,8 @@ interface to the NSAPI.
 =item B<Netscape::Server::Session, Netscape::Server::Request>
 
 These are Perl classes from which objects that are passed as arguments
-to nsapi_perl subroutines are instantiated.
+to nsapi_perl subroutines are instantiated.  These modules are
+automatically loaded at start-up.
 
 =item B<Netscape::Registry>
 
@@ -100,40 +93,74 @@ installed F<nsapi_perl.so>.  (For Netscape 1.x servers this should be
 added to the file F<magnus.conf> and should be on a single line.)
 
 After linking to F<nsapi_perl.so> the server must then be told to run
-the function nsapi_perl_init.  This function initializes the Perl
-interpreter which then parses and runs the F<nsapi_perl.conf> program.
+the function nsapi_perl_init, which initializes the Perl interpreter.
 This is done by adding the following line the the server's F<obj.conf>
 file.
 
- Init fn="nsapi_perl_init" conf="/path/nsapi_perl.conf"
+ Init fn="nsapi_perl_init"
 
-where F</path> is the full path to where you installed
-F<nsapi_perl.conf>.  (Again for Netscape 1.x servers this is to be
-done in F<magnus.conf>.)
+(Again for Netscape 1.x servers this is to be done in F<magnus.conf>.)
 
-F<nsapi_perl.conf> is responsible for loading the Perl code you wish to
-have executed by the server.  For instance, if you wish to run
-subroutines in the module Netscape::ModuleName, add a line
-like this to F<nsapi_perl.conf>.
+nsapi_perl_init optionally accepts the B<init-script=>I<path>
+key/value pair as an arugment.  If this argument is specified, I<path>
+is the full path to a perl script which will be parsed and executed at
+server start-up.
 
- use Netscape::ModuleName;
+Conventionally this script is called F<nsapi_perl_init.pl>, although
+you're free to choose any name you wish. For example, the following
+line will run F<foobar.pl> in my home directory at server start-up.
 
-The module's subroutines will then be compiled when it comes time for
+ Init fn="nsapi_perl_init"
+      init-script="/home/benjamin/foobar.pl"
+
+Early versions of nsapi_perl mandated that nsapi_perl_init be passed
+the B<conf>=I<path> key/value pair as an argument.  The B<conf>
+argument is still accepted, if given, but a warning is issued about
+its deprecated nature.  If the B<conf> argument is given, then the
+file specified by I<path> will be parsed and run exactly as for the
+B<init-script> argument.
+
+nsapi_perl_init also accepts an additional optional argument,
+B<tracelog>, that may be used to enable nsapi_perl tracing.  See
+L</DIAGNOSTICS> for full details.
+
+F<nsapi_perl_init.pl> may load the Perl code you wish to have executed
+by the server.  For instance, if you wish to use the
+Netscape::Registry module, add you can add line like this to
+F<nsapi_perl_init.pl>.
+
+ use Netscape::Registry;
+
+The module's subroutines will then be pre-compiled when it comes time for
 the server to run them.
 
-Since F<nsapi_perl.conf> is a Perl program that is executed when the
-server starts, you can use it to perform a multitude of initialization
-tasks like opening log files, defining global configuration variables,
-and so on.
+Since F<nsapi_perl_init.pl> is a Perl program that is executed when
+the server starts, you can use it to perform a multitude of
+initialization tasks like opening log files, defining global
+configuration variables, and so on.
 
-With the above lines inserted into F<obj.conf> and with a properly
-configured F<nsapi_perl.conf> you should see a message like this when
-starting your server.
+If you choose not to use() any modules in F<nsapi_perl_init.pl>, they
+will be automatically loaded for you when they are needed.  However,
+relying on this method may not be as effiecient in terms of memory for
+multi-process servers.  Auto-loading of modules also implies a small
+performance penalty when responding to the first request that causes a
+module to be loaded, since that module has to be compiled before the
+request can be answered.
 
- nsapi_perl_init: loaded a perl version 5.00401 interpreter
+In general, therefore, it is probably better to use() all of your
+modules from F<nsapi_perl_init.pl>.
 
-At this point Perl is primed and the server is ready to run any of the
-Perl subroutines defined during initialization.  Cool.
+With the above lines inserted into F<obj.conf> you should see a
+message like this when starting your server:
+
+ [11/Feb/1998:16:22:00] info: nsapi_perl_init reports: \
+ loaded a perl version 5.00401 interpreter
+
+(This message may go to your server's error log, your screen, or both,
+depending upong your setup.)
+
+At this point Perl is primed and the server is ready to run.  Cool.
+
 
 =head1 USAGE
 
@@ -248,10 +275,18 @@ F</perl> be handled entirely by Perl:
  AddLog fn="nsapi_perl_handler" module="Netscape::AddLog
  </Object>
 
-Any module name can be chosen to process a request (so long as it's
-been use()d by F<nsapi_perl.conf> during server startup.  I recommend,
+Any module name can be chosen to process a request.  I recommend,
 however, that all modules used with nsapi_perl be named somewhere in
 the Netscape:: hierarchy.
+
+If a module chosen to process a request has not yet been loaded by the
+server process, it will be compiled by the server at request time.  As
+mentioned in L</Initialization>, such auto-loading will incur at
+performance penalty for the first request that causes that module to
+be used (but not for subequent requests).  This auto-loading may also
+incur a memory-use penalty for multi-process servers.  It is therefore
+recommended that you pre-load modules using a perl start-up script, as
+described in L</Initialization>.
 
 =head1 SUBROUTINES
 
@@ -371,10 +406,7 @@ In F<obj.conf>:
  Service fn="nsapi_perl_handler" module="Netscape::HelloWorld"
  </Object>
 
-In F<nsapi_perl.conf>:
- package Netscape::Server::Config;
- use Netscape::Server::Request;
- use Netscape::Server::Session;
+In F<nsapi_perl_init.pl>:
  use Netscape::HelloWorld;
 
 In F<HelloWorld.pm>:
@@ -430,11 +462,8 @@ In F<obj.conf>:
  NameTrans fn="nsapi_perl_handler" module="Netscape::Redirect"
      from="/special" alt="/default/home.html" url="/for_mozilla/home.html"
 
-In F<nsapi_perl.conf>:
+In F<nsapi_perl_init.pl>:
 
- package Netscape::Server::Config;
- use Netscape::Server::Request;
- use Netscape::Server::Session; 
  use Netscape::Redirect;
 
 In F<Redirect.pm>:
@@ -488,6 +517,25 @@ In F<Redirect.pm>:
 
  1;
 
+=head1 DIAGNOSTICS
+
+nsapi_perl has a trace facility that can be enabled by providing the
+B<tracelog> argument to nsapi_perl_init in F<obj.conf>.  The value of
+the tracelog argument is the path to a file where tracing messages
+will be written.  This path is nominally relative to the server's
+F<config> directory, but that depends on Netscape internals.  To be on
+the safe side, specify a full path.  For example, the stanza
+
+ Init fn=nsapi_perl_init
+      init-script=/usr/local/suitespot/lib/startup.pl
+      tracelog=/usr/local/suitespot/https-foo/logs/nsapi_perl.log
+
+in F<obj.conf> will write the tracelog to
+F</usr/local/suitespot/https-foo/logs/nsapi_perl.log>.
+
+If the file specified by the B<tracelog> argument already exists, it
+will be appended to.
+
 =head1 BUGS
 
 Send bug reports, comments, or questions to the author, Ben Sugars
@@ -520,7 +568,9 @@ anyone know if the libperl.so with 5.004 is OK to use?
 
 =head1 AUTHOR
 
-Benjamin Sugars <bsugars@canoe.ca>
+Benjamin Sugars <bsugars@canoe.ca>, with lots of help from Steve
+Nielsen <Steve.Nielsen@infores.com> and Olivier Dehon
+<dehon_olivier@jpmorgan.com>.
 
 =head1 SEE ALSO
 
