@@ -117,7 +117,7 @@ WriteMakefile(
 	      'LIBS'	=> [$perl_lib],
 	      'LD' => $ld,
 	      'LDDLFLAGS' => "$perl_ldopts $perl_lib ../../../nsapi/nsapi_perl.o ../../../nsapi/xsinit.o $perl_libraries",
-	      'VERSION' => '0.15',
+	      'VERSION' => '0.16',
 );
 
 # --- NSAPI C code section

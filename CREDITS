@@ -1,8 +1,16 @@
-Your name could be here!  If you have any contributions, comments,
-ideas, etc, let me (Ben Sugars, bsugars@canoe.ca) know.
+Thanks to Steve Nielsen <Steve.Nielsen@infores.com> and Craig Riter
+<criter@riter.com> for offering to help with the Win32 build process.
+Steve has sent me a jumbo patch which should simplify this process
+considerably; I have not yet has the chance to incorporate these
+changes.
 
-See the file TO_DO for some outstanding issues and wishes.
+Thanks also to Olivier Dehon <dehon_olivier@jpmorgan.com> for finding
+(and fixing several bugs).  Olivier is also working on improving the
+(crude) way in which net_read() is currently implemented.
+
+In spite of their help, all blame for bugs should be directed at me
+and not at my collabarators.
 
 -Ben Sugars
 <bsugars@canoe.ca>
-November 18, 1997
+January 27, 1997

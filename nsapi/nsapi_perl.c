@@ -97,7 +97,7 @@ NSAPI_PUBLIC int nsapi_perl_handler(pblock * pb, Session * sn, Request * rq)
         sub = "handler";
     }
     /* Create the fully qualified subroutine name */
-    handler = (char *) MALLOC(strlen(module) + strlen(sub) + 1);
+    handler = (char *) MALLOC(strlen(module) + 2 + strlen(sub) + 1);
     util_sprintf(handler, "%s::%s", module, sub);
 
     /* Create the Request and Session objects */

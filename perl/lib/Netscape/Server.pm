@@ -88,7 +88,7 @@ require DynaLoader;
 		'all' => [ @EXPORT_OK ],
 		);
 
-$VERSION = '0.15';
+$VERSION = '0.16';
 
 sub AUTOLOAD {
     # --- This AUTOLOAD subroutine is kind of weired because 3.x servers

@@ -1,3 +1,6 @@
+v0.10 - Wed Nov 19 10:31:38 EST 1997
+      - First public version.
+
 v0.15 - Thu Dec 11 14:28:05 EST 1997
       - Added Netscape::Registry;
       - Added Netscape::Server::Socket;
@@ -5,5 +8,8 @@ v0.15 - Thu Dec 11 14:28:05 EST 1997
       - fixed bug with $query_string = $rq->query_string;
       - various other small bug fixes.
 
-v0.10 - Wed Nov 19 10:31:38 EST 1997
-      - First public version.
+v0.16 - Tue Jan 27 15:32:56 EST 1998
+      - Fixed annoying bug in nsapi_perl.c that would
+        cause "undefined subroutine" error mesages.  Thanks
+        to Olivier Dehon (dehon_olivier@jpmorgan.com) and
+        others for finding it.

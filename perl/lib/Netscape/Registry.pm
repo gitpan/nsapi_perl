@@ -167,7 +167,7 @@ sub _cgi_env {
     $env{'PATH_TRANSLATED'} = $rq->vars('ntrans-base') . $env{'PATH_INFO'} if
 	(defined $rq->vars('ntrans-base') and defined $env{'PATH_INFO'});
     $env{'SCRIPT_NAME'} = $rq->reqpb('uri'); $env{'SCRIPT_NAME'} =~ s/$env{'PATH_INFO'}$//;
-    $env{'GATEWAY_INTERFACE'} = 'CGI/1.1; nsapi_perl/0.15';
+    $env{'GATEWAY_INTERFACE'} = 'CGI/1.1; nsapi_perl/0.16';
     $env{'CONTENT_LENGTH'} = $rq->headers('content-length') if defined $rq->headers('content-length');
     $env{'CONTENT_TYPE'} = $rq->headers('content-type') if defined $rq->headers('content-type');
 
@@ -193,6 +193,13 @@ In F<obj.conf>
  ObjectType fn="force-type" type="application/perl"
  Service fn="nsapi_perl_handler" module="Netscape::Registry"
  </Object>
+
+In F<nsapi_perl.conf>
+
+ package Netscape::Server::Config;
+ use Netscape::Server::Request;
+ use Netscape::Server::Session;
+ use Netscape::Registry;
 
 =head1 DESCRIPTION
 
