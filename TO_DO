@@ -1,0 +1,47 @@
+Volunteers are wanted to help address the following issues.  If you
+can make a contribution, even if it's as simple as giving advice, send
+me (Ben Sugars) an email to bsugars@canoe.ca.
+
+Major Issues
+------------
+
+-The installation process needs to be improved.  In particular, there's no
+reason why nsapi_perl can't be made to build "out-of-the-box" on Win32.
+
+-I can only get extension modules to work if I recompile them adding '-lperl'
+to the cc options.
+
+-Threading.  Grrrr.  Netscape *used* to let you run their multithreaded
+servers as multiprocess single-threaded servers if you wanted to.  The 3.x
+line doesn't let you do this, AFAIK.  So, we need a thread-safe libperl.so.
+I know this is being worked on, but in the meantime, does anyone know if the
+libperl.so with 5.004 is OK to use?
+
+Major Wishes
+------------
+
+-The following modules would be very useful:
+        -CGI caching like Apache::Registry
+        -Authentication via DBM
+        -Authentication via DBI
+        -Persistent database connections
+        -Perl embedded in HTML documents
+
+-Basically anything done by Apache/mod_perl I think could, in theory, be done
+with nsapi_perl.  (Of course, mod_perl has the advantage of being able to
+poke around under the hood of its server.)
+
+Minor Issues or Wishes
+----------------------
+
+-Send STDERR messages to error log.  A first approach might be to allow
+people to import a newly defined warn() from Netscape::Server that's a
+wrapper around log_error().
+
+-Create a $sn->print(@list) wrapper around $sn->net_write($message).
+
+-Anything else that people find useful.
+
+-Ben Sugars
+<bsugars@canoe.ca>
+November 18, 1997
