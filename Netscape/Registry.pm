@@ -178,6 +178,8 @@ sub _cgi_env {
 
     # --- Now just go through a fixed list in a dumb, ugly way
     $env{'HTTPS'} = 'OFF'; # :-)
+    $env{'AUTH_TYPE'} = $rq->vars('auth-type') if defined $rq->vars('auth-type');
+    $env{'REMOTE_USER'} = $rq->vars('auth-user') if defined $rq->vars('auth-user');
     $env{'REMOTE_ADDR'} = $sn->remote_addr;
     $env{'REMOTE_HOST'} = $sn->remote_host;
     $env{'REQUEST_METHOD'} = $rq->request_method;
@@ -289,6 +291,11 @@ normal CGI, but at the time of writing there are some differences.
 
 =over 4
 
+=item B<AUTH_TYPE>
+
+This variable is the same as under regular CGI.  It is only defined if
+the program being accessed is under access control.
+
 =item B<CONTENT_LENGTH>
 
 This variable is the same as under regular CGI.
@@ -348,6 +355,11 @@ This variable is the same as under regular CGI.
 =item B<REQUEST_METHOD>
 
 This variable is the same as under regular CGI.
+
+=item B<REMOTE_USER>
+
+This variable is the same as under regular CGI.  It is only defined if
+the program being accessed is under access control.
 
 =item B<SCRIPT_NAME>
 

@@ -52,7 +52,7 @@ static int trace = 0;
 
 NSAPI_PUBLIC int nsapi_perl_init(pblock * pb, Session * sn, Request * rq)
 {
-    char *init_script, *libperl, *tf;
+    char *init_script, *shlib, *tf;
     char *perl_argv[2];
     SV *perl_version;
     int exitstatus, i, perl_argc;
@@ -73,9 +73,17 @@ NSAPI_PUBLIC int nsapi_perl_init(pblock * pb, Session * sn, Request * rq)
 
     /* Some OSs don't make their symbols global by default.
        This function takes care of that. */
-    libperl = pblock_findval("libperl", pb);
-    if (libperl != NULL) {
-      if (!(nsapi_perl_bootstrap(sn, rq, libperl))) {
+    shlib = pblock_findval("shlib", pb);
+    if (shlib == NULL) {
+      shlib = pblock_findval("libperl", pb);
+      if (shlib != NULL) {
+	/* They're using old syntax */
+	log_error(LOG_INFORM, "nsapi_perl_init", sn, rq,
+		  "warning: use of 'libperl' parameter to nsapi_perl_init is deprecated");
+      }
+    }
+    if (shlib != NULL) {
+      if (!(nsapi_perl_bootstrap(sn, rq, shlib))) {
 	log_error(LOG_CATASTROPHE, "nsapi_perl_init", sn, rq,
 		  "can't globalize perl symbol table");
 	return REQ_ABORTED;
@@ -157,14 +165,18 @@ NSAPI_PUBLIC int nsapi_perl_init(pblock * pb, Session * sn, Request * rq)
 
 /* Hack to make perl symbol table global.  Right now only tested
    under Solaris, but will be made more portable soon? */
-int nsapi_perl_bootstrap(Session *sn, Request *rq, char *libperl)
+int nsapi_perl_bootstrap(Session *sn, Request *rq, char *shlib)
 {
 #ifdef NP_USE_NP_BOOTSTRAP
-  if (dlopen(libperl, RTLD_LAZY|RTLD_GLOBAL) == NULL) {
+  log_error(LOG_INFORM, "nsapi_perl_bootstrap", sn, rq,
+	    "calling dlopen(\"%s\", RTLD_LAZY|RTLD_GLOBAL)", shlib);
+  if (dlopen(shlib, RTLD_LAZY|RTLD_GLOBAL) == NULL) {
     log_error(LOG_INFORM, "nsapi_perl_bootstrap", sn, rq,
-	      "dlopen of %s: %s", libperl, dlerror());
+	      "dlopen of %s: %s", shlib, dlerror());
     return(0);
   }
+  log_error(LOG_INFORM, "nsapi_perl_bootstrap", sn, rq,
+	    "dlopen of %s ok", shlib);
   return(1);
 #else
   return(1);
@@ -295,53 +307,6 @@ SV* nsapi_perl_bless_session(Session * sn)
     SV *session = sv_newmortal();
     sv_setref_iv(session, "Netscape::Server::Session", (IV) sn);
     return (session);
-}
-
-/*
- * nsapi_perl_pblock2hash_ref() - converts a NSAPI pblock to
- *              a perl hash. Returns reference to the hash.
- */
-
-NSAPI_PUBLIC SV* nsapi_perl_pblock2hash_ref(pblock * pb)
-{
-    char *key;
-    char **pblock_contents;
-    HV *pblock;
-    SV *value, *pblock_ref;
-    int i, len;
-
-    /* Mortalize the pblock hash */
-    pblock = newHV();
-    sv_2mortal((SV *) pblock);
-
-    /* Shove the pb into an array of strings */
-    pblock_contents = pblock_pb2env(pb, NULL);
-
-    /* Loop through each string in pblock_contents */
-    for (; *pblock_contents != NULL; ++pblock_contents) {
-	len = strlen(*pblock_contents);
-
-	/* Look for an '=' sign in the string */
-	for (i = 0; i < len && *(*pblock_contents + i) != '='; i++);
-	if (i == len)
-	    continue;
-
-	/* Split on the '=' */
-	*(*pblock_contents + i) = '\0';
-	key = *pblock_contents;
-	value = sv_newmortal();
-	sv_setpv(value, *pblock_contents + i + 1);
-
-	/* Store the key/value pair */
-	if (hv_store(pblock, key, strlen(key), value, 0))
-	    /* Increment the reference count of the hash elements */
-	    (void) SvREFCNT_inc(value);
-
-    }
-
-    /* Create the reference to the hash */
-    pblock_ref = newRV((SV *) pblock);
-    return (sv_2mortal(pblock_ref));
 }
 
 /*

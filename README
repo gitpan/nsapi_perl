@@ -14,7 +14,7 @@
 
 	*** This is alpha software -- use at your own risks ***
 
-README for nsapi_perl version 0.22.
+README for nsapi_perl version 0.23.
 
 
 Introduction
@@ -38,19 +38,21 @@ The prerequisites are
         -A Netscape web server.  Should work with almost any Netscape
         server that supports NSAPI programming.
 
-It is also recommended that you have a Perl that has been compiled to
-use a shared Perl library (such as libperl.so) rather than a static
-Perl library (such as libperl.a).
-
 Installation should be relatively straight-forward on Solaris and NT
 systems.  It should also be possible on other Unix systems where Perl
 has been compiled and which have working Netscape servers.  However,
 on non-Solaris Unixes the install process might need some
 hand-holding.
 
-Please see the paragraph in the 'Notes' section of INSTALL regarding
-the use of the static libperl.a and Perls that have binary
-compatibility with 5.003.
+Earlier versions of nsapi_perl seemed only to work with a shared Perl
+library, such as libperl.so.  This version, however, works (for me)
+with either shared or static Perl libraries.  YMMV.  If you have
+problems with a static Perl library (the symptons are bus errors at
+server start-up), try using a shared Perl library.
+
+Some problems have also been reported when using Perls that have
+binary compatibility with 5.003.  I recommend using a Perl compiled
+without binary compatibility with 5.003.
 
 
 Further Reading
@@ -86,10 +88,6 @@ that you let me know what you have done so that you can get the proper
 credit for it.
 
 Here are the major issues at this time:
-
-The installation process needs to be improved.  Ideally it should be
-able to detect what the correct combination of compilation and linking
-options for your system are and go from there.
 
 Extension modules that use dynamic loading of C code remain
 problematic.  As of this release, dynamic loading works as expected on
@@ -156,5 +154,5 @@ and especially
 
 -Ben Sugars
 <bsugars@canoe.ca>
-March 2, 1998
+April 1, 1998
 

@@ -1,47 +1,23 @@
-# This Makefile.PL script is based on the original by:
-#
-# -Ben Sugars
-# <bsugars@canoe.ca>
-# December 11, 1997
-#
-# This script will generate a Makefile.PL script for both the Netscape
-# plugin (in ./nsapi) and the perl Netscape extension (in ./perl/lib/Netscape).
-#
-# Both Makefile.PL scripts use MakeMaker to generate platform dependent
-# Makefiles.
-#
-# This script will prompt the user for the location of Netscape Enterprise
-# Server root directory and for the location of where to install the
-# Netscape plugin. The server root is expected to be a fully qualified
-# directory path and the plugin installation directory relative to
-# the server root.
-#
-# Every attempt has been made to minimize the platform differences between
-# MSWin32 and the various UN*Xs. Please help keep it that way.
-# 
-# All ideas and improvements to this script are welcome.
-#
-# -Steve Nielsen
-# <spn@enteract.com>
-# Janurary 20, 1998
-#
-# Confirmed to work on:
-# =====================
-#	MSWin32:
-#		NT 4.0 sp3, Netscape Enterprise Server 2.01, perl 5.004_04
-#	Sun/Solaris
-#               SunOS 5.5.1 sun4m, Netscape Enterprise Server 2.01, perl 5.004_01
+#!perl -w
+
+##-- Makefile.PL for nsapi_perl/Netscape::Server
+
+##----------------------------------------------------------------------
+##-- Library requirements
 
 BEGIN { $^W = 1 }
 BEGIN { require 5.004 }
-
 use strict;
+use ExtUtils::MakeMaker;
+use ExtUtils::Embed;
 use Config;
 use File::Find;
 
-# ----------------------------------------------------------------------
 
-##-- Introduction
+
+##----------------------------------------------------------------------
+##-- Introductory remarks and base questions
+
 print <<EOM;
 
 Welcome to nsapi_perl.  This program will ask some questions and then
@@ -55,281 +31,336 @@ question is asked.  Just hit <return> to accept the default answer.
 Proceed? [y]
 EOM
 {
-	my $default_answer = 'y';
-	my $answer = <>;
-	chomp $answer;
-	$answer = ($answer or $default_answer);
-	$answer =~ /^y/i or exit;
+    my $default_answer = 'y';
+    my $answer = <>;
+    chomp $answer;
+    $answer = ($answer or $default_answer);
+    $answer =~ /^y/i or exit;
 }
 
+
 ##-- get Netscape Server root directory
+my $ns_server_root;
 print <<EOM;
 
 Enter your Netscape server's root directory:
 EOM
-my $ns_server_root = <>;
-chomp $ns_server_root;
-$ns_server_root =~ s#(\/|\\)+$##;
-$ns_server_root =~ s#\\#\/#;
+{
+    $ns_server_root = <>;
+    chomp $ns_server_root;
+    $ns_server_root =~ s#(\/|\\)+$##;
+    $ns_server_root =~ s#\\#\/#;
+}
 
 
 ##-- Find possible include directories
+my $ns_inc_dir;
 my $possible_ns_inc_dir = '';
 find(sub { $possible_ns_inc_dir = $File::Find::dir if $_ eq 'netsite.h' },
 	$ns_server_root);
-##-- confirm NSAPI include directory.
 print <<EOM;
 
 Enter the directory where the NSAPI header files can
 be found: [$possible_ns_inc_dir]
 EOM
-my $ns_inc_dir;
 {
-	my($default_answer) = $possible_ns_inc_dir;
-	my $answer = <>;
-	chomp $answer;
-	$ns_inc_dir = ($answer or $default_answer);
+    my($default_answer) = $possible_ns_inc_dir;
+    my $answer = <>;
+    chomp $answer;
+    $ns_inc_dir = ($answer or $default_answer);
 }
+
 
 ##-- get plugin installation directory
+my $ns_inst_dir;
 print <<EOM;
 
-Enter where you want to install the Netscape plugin (relative
-to Netscape Enterprise server root) and the nsapi_perl_init.pl
-start-up script: [lib]
+Enter where you want to install the Netscape plugin and the
+nsapi_perl_init.pl start-up script:
+[$ns_server_root/lib]
 EOM
-my $ns_inst_dir;
 {
-	my $default_answer = 'lib';
-	my $reldir = <>;
-	chomp $reldir;
-	$reldir = ($reldir or $default_answer);
-	$reldir =~ s#(\/|\\)+$##;
-	$reldir =~ s#\\#\/#;
-	$ns_inst_dir     = $ns_server_root . '/' . $reldir;
+    my $default_answer = "$ns_server_root/lib";
+    my $dir = <>;
+    chomp $dir;
+    $dir = ($dir or $default_answer);
+    $dir =~ s#(\/|\\)+$##;
+    $dir =~ s#\\#\/#;
+    $ns_inst_dir     = $dir;
 }
+
 
 ##-- get OS type
 my $os = $^O;
 my $osvers = $Config{osvers};
 $osvers =~ s/^\s*(\d+\.\d+).*/$1/;  # drop sub-sub-version: 2.5.1 -> 2.5
 
-##-- base set of compilation defines
-my $ns_defines = "-DNET_SSL -DMCC_HTTPD";
 
-##-- Unix platforms need not be thread-safe for older servers
-if ($os ne 'MSWin32') {
-	print <<EOM;
+##-- enable tracing?
+my $enable_np_tracing = 0;
+print <<EOM;
 
-Should we compile a thread-safe Netscape plugin?  Basically for 1.x
-Unix servers you should answer 'no', but for 2.x and higher Unix
-servers you should answer 'yes'.  Compile thread-safe? [yes]
+Enable nsapi_perl tracing? [y]
 EOM
-	my $default_answer = 'yes';
+{
+    my $default_answer = 'y';
+    my $answer = <>;
+    chomp $answer;
+    $answer = ($answer or $default_answer);
+    $enable_np_tracing = 1 if $answer =~ /^y/i;
+}
+
+
+##-- does this look like a threaded server?
+my $threaded_server = 0;
+my $have_critical = 0;
+if( -e "$ns_inc_dir/base/crit.h" ) {
+    $threaded_server = 1;
+    $have_critical = 1;
+}
+
+
+##-- create build choices
+my $use_threads = 0;
+my $use_critical = 0;
+my @choices;
+my $i = 0;
+
+if($threaded_server) {
+##XXX kind of clunky... what about FAKE_THREADS? should it matter?
+
+##XXX commented out for the 0.2x series
+#    if(defined($Config{'usethreads'})
+#       and $Config{'usethreads'} eq 'define') {
+#	$choices[$i++] = "Perl threads";
+#    }
+
+    $choices[$i++] = "Critical sections";
+    $choices[$i++] = "Use no syncronization";
+
+    print <<EOM;
+
+If you are running your Netscape Server in a single process/multithread mode
+it is recommended that you choose one of the following syncronization methods
+for running perl scripts: [1]
+EOM
+    $i = 0;
+    foreach $i (0 .. $#choices) {	
+	print "  " , $i+1 , ". " . $choices[$i] . "?\n";
+    }
+    {
+	my $default_answer = '1';
 	my $answer = <>;
 	chomp $answer;
 	$answer = ($answer or $default_answer);
-	if ($answer =~ /^y/) {
-		$ns_defines .= " -DNP_THREAD_SAFE";
+	$answer--;
+	if($choices[$answer] =~ /threads/i) {
+	    $use_threads = 1;
+	} elsif($choices[$answer] =~ /critical/i) {
+	    $use_critical = 1;
+	} elsif($choices[$answer] =~ /no syncronization/i) {
+	    warn "\nWarning: you will not be able run your server safely in\n";
+	    warn "in multi-threaded mode.\n\n";
 	}
-} else {
-	##-- MSWin32 must be thread-safe
-	$ns_defines .= " -DNP_THREAD_SAFE";
+    }
 }
 
-##-- MSWin32 specific compile options
+
+##-- See if they're using libperl.a or libperl.so
+my $uses_static_libperl = 1;
+if ($Config{useshrplib} ne 'false') {
+    $uses_static_libperl =  0;
+}
+
+
+
+
+##----------------------------------------------------------------------
+##-- Now we should have assembled enough information to proceed, so
+##-- construct the complete set of compile and link options.
+
+
+##-- Initial declarations common to all platforms
+my %ns_compile = (
+		  flags => '',
+		  defines => " -DNET_SSL -DMCC_HTTPD",
+		  inc_dirs => " -I$ns_inc_dir",
+		  );
+my %ns_link = (
+	       flags => '',
+	       lib_dirs => '',
+	       libs => '',
+	       );
+
+
+##-- Tracing
+if ($enable_np_tracing) {
+    $ns_compile{defines} .=  " -DPERL_TRACE";
+}
+
+
+##-- Critical sections
+if($have_critical) {
+    $ns_compile{defines} .= " -DNP_HAVE_CRITICAL";
+}
+
+
+##-- Threadedness
+if($use_threads) {
+    $ns_compile{defines} .= " -DNP_USE_THREADS";
+} elsif($use_critical) {
+    $ns_compile{defines} .= " -DNP_USE_CRITICAL";
+}
+
+
+##-- Operating-system specific compile options
 if($os eq 'MSWin32') {
-	$ns_defines .= " -DWIN32 -DXP_WIN32";
+    ##-- This seems to be sufficient
+    $ns_compile{defines} .= " -DWIN32 -DXP_WIN32";
+    
+} else {
+    
+    $ns_compile{defines} .= " -DNP_BOOTSTRAP -DXP_UNIX";
+    ##-- Each Unix flavour gets its defines added here
+    if ($os eq 'solaris') {
+	if ($threaded_server) {
+	    $ns_compile{defines} .= " -D_REENTRANT";
 	}
-##-- Solaris-specific compile options
-elsif ($os eq 'solaris') {
-	$ns_defines .= " -DNP_BOOTSTRAP -DSOLARIS -D_REENTRANT -DXP_UNIX -DSPAPI20 -Wall";
-	}
-##-- Untested operating systems
-else {
+	$ns_compile{defines} .= " -DSOLARIS -DSPAPI20";
+	$ns_compile{flags} .= " -Wall";
+    } else {
+	##-- Unverified operating systems
 	if ($os eq 'irix') {
-		$ns_defines .= " -DNP_BOOTSTRAP -DXP_UNIX -DIRIX -D_SGI_MP_SOURCE -fullwarn";
-	}
-	elsif ($os eq 'hpux') {
-		$ns_defines .= " -DXP_UNIX -DHPUX -D_HPUX_SOURCE -Aa +DA1.0 +z -c";
+	    $ns_compile{defines} .= " -DIRIX -D_SGI_MP_SOURCE";
+	    $ns_compile{flags} .= "-fullwarn";
+	} elsif ($os eq 'hpux') {
+	    $ns_compile{defines} .= " -DHPUX -D_HPUX_SOURCE";
+	    $ns_compile{flags} .= "-Aa +DA1.0 +z -c";
 	}
 	print <<EOM;
-
+	
 Warning: build of nsapi_perl on $os is untested.  If successful,
-please let me (Ben Sugars, bsugars\@canoe.ca) know.
+please let the nsapi_perl mailing list (nsapi_perl\@samurai.com)
+know.
 
-(You made need to fiddle with the ./nsapi/Makefile to get
-nsapi_perl to work.  Please be patient.)
-
-Enter NSAPI compile options for $os (These can generally be found
-from the Makefile in the nsapi/examples directory.):
-[$ns_defines]
+(You made need to fiddle with the Makefile to get nsapi_perl to work.
+Please be patient.)
 EOM
-	my $answer = <>;
-	chomp $answer;
-	$ns_defines = ($answer or $ns_defines);
+        ;
+    }
 }
 
-##-- change directory to ./nsapi and generate Makefile.PL
-print "\nMakefile.PL: entering ./nsapi\n";
-chdir './nsapi' or
-    die "Makefile.PL: couldn't chdir to ./nsapi: $!\n";
-MF_nsapi_perl($ns_server_root, $ns_inst_dir, $os, $ns_defines, $ns_inc_dir);
+##-- Operating system-specific linking flags
+if ($os eq 'MSWin32') {
+    $ns_link{flags} = "$ns_server_root/nsapi/examples/libhttpd.lib";
+} else {
+    $ns_link{flags} .= "$Config{archlibexp}/auto/DynaLoader/DynaLoader.a";
+    $ns_link{lib_dirs} .= " -L$Config{archlibexp}/CORE";
+    $ns_link{libs} .= " -lperl  $Config{libs}";
+}
 
-##-- change directory to ./perl/lib/Netscape and generate Makefile.PL
-print "Makefile.PL: entering ./perl/lib/Netscape\n";
-chdir '../perl/lib/Netscape' or
-    die "Makefile.PL: couldn't chdir to ./perl/lib/Netscape: $!\n";
-MF_perl_ext($ns_server_root, $ns_inst_dir, $os, $ns_defines, $ns_inc_dir);
 
+##-----------------------------------------------------------------------------
+##-- Other stuff
+my $nsapi_install_target = <<EOT;
+nsapi_install :: all
+	\$(CP) \$(INST_ARCHAUTODIR)/\$(BASEEXT).\$(DLEXT) $ns_inst_dir/.
+EOT
+    ;
+unless ( -e "$ns_inst_dir/nsapi_perl_init.pl") {
+    $nsapi_install_target .= <<EOT
+	\$(CP) pl/nsapi_perl_init.pl $ns_inst_dir/.
+EOT
+    ;
+}
+
+##----------------------------------------------------------------------
+##-- Closing remarks
 print <<EOM;
-See the INSTALL file for further instructions.  Please Contact
-Ben Sugars (bsugars\@canoe.ca) in the event of success/failure.
+See the INSTALL file for further instructions.  Please contact the
+nsapi_perl mailing list (nsapi_perl\@samurai.com) in the event of
+success/failure.
 
 Good Luck!
 EOM
+    ;
 
-exit(0);
+##----------------------------------------------------------------------
+##-- Create the Makefile.PLs and xsinit code
 
-##===============================================================
-## 
-## named_include
-##
-##	Finds a directory named include
-##
-##===============================================================
-
-sub named_include
-{
-	print "$_\n";
+##-- Create xsinit.c
+unless (-e "nsapi/xsinit.c") {
+    print "Makefile.PL: creating nsapi/xsinit.c\n";
+    xsinit('nsapi/xsinit.c');
 }
 
-##===============================================================
-## 
-## MF_nsapi_perl():
-##
-##	This subroutine generates the Makefile.PL for the nsapi_perl
-##	plugin.
-##
-##===============================================================
-
-sub MF_nsapi_perl
-{
-my($ns_server_root, $ns_inst_dir, $os, $ns_defines, $ns_inc_dir) = @_;
-
-my $OTHERLDFLAGS;
-
-##-- If we need to in the future have &MF_nsapi_perl rework
-##-- $ns_defines, that should happen here.  For now, we just
-##-- take it as is.
-##XXX prompt for PERL_TRACE
-my $DEFINES = $ns_defines . " -D PERL_TRACE";
-
-##-- MSWin32 specific compile options
-if($os eq 'MSWin32') {
-	$OTHERLDFLAGS = "$ns_server_root/nsapi/examples/libhttpd.lib";
-	}
-##-- Unix compile options
-else {
-	$OTHERLDFLAGS = "$Config{ccdlflags} -L$Config{archlib}/CORE $Config{libs} -lperl $Config{archlib}/auto/DynaLoader/DynaLoader.a";
-}
-
-##-- start Makefile.PL generation
-local(*FH);
-open(FH, ">Makefile.PL") || die $!;
-
-print "Creating Makefile.PL for nsapi_perl\n\n";
-
-##---------------------------------------------------------------
-##
-## Makefile.PL static section #1
-##
-## Ticks around here-document delimeter will cause perl to
-## qoute the here-document text without variable interpolation.
-##
-##---------------------------------------------------------------
-print FH <<'EOM';
-# Makefile.PL for nsapi_perl
-BEGIN { $^W = 1 }
-BEGIN { require 5.004 }
-use strict;
+##-- Create the Netscape::Server Makefile.PL
+print "Makefile.PL: creating Netscape/Makefile.PL\n";
+open(OUTPUT, '>Netscape/Makefile.PL') or
+    die "Makefile.PL: can't open Netscape/Makefile.PL: $!\n";
+print OUTPUT <<"EOF";
 use ExtUtils::MakeMaker;
-use ExtUtils::Embed;
-use Config;
+WriteMakefile(
+    NAME => 'Netscape::Server',
+    INC => '-I$ns_inc_dir -I../nsapi',
+    DEFINE => '$ns_compile{defines}',
+    OBJECT => 'Server.o ../nsapi/nsapi_perl_util.o',
+    VERSION_FROM => 'Server.pm',
+    PMLIBDIRS => [qw(Server eg)],
+EOF
+	;
 
-# Create xsinit.c
-print "Makefile.PL: creating xsinit.c\n";
-xsinit("xsinit.c");
-
-EOM
-
-##---------------------------------------------------------------
-##
-## Makefile.PL dynamic section
-##
-## Variable interpolation takes place in this here docuemnt.
-##
-##---------------------------------------------------------------
-print FH <<EOM;
-my \$ns_server_root = "$ns_server_root";
-my \$ns_inst_dir = "$ns_inst_dir";
-my \$ns_inc_dir = "$ns_inc_dir";
-
-# options for MakeMaker
-my \%opts = ();
-\$opts{DEFINE} = "$DEFINES";
-\$opts{dynamic_lib} = {
-	OTHERLDFLAGS => "$OTHERLDFLAGS"
-	};
-EOM
-
-##---------------------------------------------------------------
-##
-## Makefile.PL static section #2
-##
-## Ticks around here-document delimeter will cause perl to
-## qoute the here-document text without variable interpolation.
-##
-##---------------------------------------------------------------
-print FH <<'EOM';
-$opts{NAME} = 'nsapi_perl';
-$opts{OBJECT} = '$(O_FILES)';
-$opts{INC} = "-I$ns_inc_dir";
-
-# create the Makefile
-WriteMakefile(%opts);
-
-exit(0);
-
-# override install section in Makefile
-EOM
-
-## The install section is slightly different depending upon whether
-## nsapi_perl_init.pl has been installed or not.
-if (-e "$ns_inst_dir/nsapi_perl_init.pl") {
-	## nsapi_perl_init.pl exists
-	print FH <<'EOM';
-sub MY::install
-{
-"install :: all
-	\$(CP) \$(INST_ARCHAUTODIR)/\$(BASEEXT).\$(DLEXT) $ns_inst_dir/.
-";
-}
-EOM
-} else {
-	## nsapi_perl_init.pl does not exist, so copy it in
-	print FH <<'EOM';
-sub MY::install
-{
-"install :: all
-	\$(CP) \$(INST_ARCHAUTODIR)/\$(BASEEXT).\$(DLEXT) $ns_inst_dir/.
-	\$(CP) nsapi_perl_init.pl $ns_inst_dir/.
-";
-}
-EOM
+##-- MSWin32 requires the extra linker flags
+if($os eq 'MSWin32') {
+	print OUTPUT <<"EOF";
+    dynamic_lib => { OTHERLDFLAGS => '$ns_link{flags}', },
+EOF
+    ;
 }
 
-print FH <<'EOM';
+##-- finsh off Makefile.PL
+print OUTPUT <<"EOF";
+);
+EOF
+    ;
+
+close OUTPUT;
+
+##-- Create the nsapi_perl Makefile.PL
+print "Makefile.PL: creating nsapi/Makefile.PL\n";
+open(OUTPUT, '>nsapi/Makefile.PL') or
+    die "Makefile.PL: can't open nsapi/Makefile.PL: $!\n";
+print OUTPUT <<"EOF";
+use ExtUtils::MakeMaker;
+WriteMakefile(
+    NAME => 'nsapi_perl',
+    INC => '$ns_compile{inc_dirs} -I.',
+    DEFINE => '$ns_compile{defines}',
+    OBJECT => '\$(O_FILES)',
+    VERSION_FROM => '../Netscape/Server.pm',
+    dynamic_lib => { OTHERLDFLAGS => '$ns_link{flags}', },
+EOF
+    ;
+
+##-- MSWin32 can do without these linker flags; causes a ba-zillion warnings
+##-- from MakeMaker.
+if($os ne 'MSWin32') {
+	print OUTPUT <<"EOF";
+    LIBS => [ '$ns_link{lib_dirs} $ns_link{libs}' ],
+EOF
+	;
+}
+
+##-- finish off nsapi_perl Makefile.PL
+print OUTPUT <<"EOF";
+);
+EOF
+	;
+
+##-- override dlsyms section on Win32
+if($os eq 'MSWin32') {
+	print OUTPUT <<'EOF';
+
 # override dlsyms section in Makefile
 sub MY::dlsyms
 {
@@ -338,112 +369,36 @@ sub MY::dlsyms
 	\$(TOUCH) \$(EXPORT_LIST)
 ";
 }
-EOM
-
-##-- end Makefile.PL generation
-
-close(FH);
+EOF
+	;
 }
 
-##===============================================================
-## 
-## MF_perl_ext():
-##
-##	This subroutine generates the Makefile.PL for the Netscape
-##	perl extension.
-##
-##===============================================================
+close OUTPUT;
 
-sub MF_perl_ext
-{
-my($ns_server_root, $ns_inst_dir, $os, $ns_defines, $ns_inc_dir) = @_;
+##----------------------------------------------------------------------
+##-- Engage
+WriteMakefile(
+	      NAME => 'nsapi_perl',
+	      NEEDS_LINKING => 1,
+	      DIR => [ 'nsapi', 'Netscape' ],
+	      VERSION_FROM => 'Netscape/Server.pm',
+	      clean => { FILES=> "nsapi/*\$(OBJ_EXT) nsapi/xsinit.c" },
+);
 
-print "Creating Makefile.PL for Netscape perl extension\n\n";
 
-my $OTHERLDFLAGS;
+##----------------------------------------------------------------------
+##-- Done?
+exit;
 
-##-- If we need to in the future have &MF_perl_ext rework
-##-- $ns_defines, that should happen here.  For now, we just
-##-- take it as is.
-my $DEFINES = $ns_defines;
-
-##-- MSWin32 specific compile options
-if($os eq 'MSWin32') {
-	$OTHERLDFLAGS = "$ns_server_root/nsapi/examples/libhttpd.lib";
-	$OTHERLDFLAGS .= " ../../../nsapi/blib/arch/auto/nsapi_perl/nsapi_perl.lib";
+package MY;
+sub install {
+    my $inherited = shift->SUPER::install(@_);
+    my(@lines) = split(m|$/|o, $inherited);
+    foreach my $line (@lines) {
+	if ($line =~ /^install\s+:/) {
+	    $line .= ' nsapi_install';
 	}
-##-- Unix compile options
-else {
-	$OTHERLDFLAGS = "$Config{ccdlflags} -L$Config{archlib}/CORE $Config{libs} -lperl";
-	$OTHERLDFLAGS .= " ../../../nsapi/nsapi_perl.o ../../../nsapi/xsinit.o";
-	$OTHERLDFLAGS .= " $Config{archlib}/auto/DynaLoader/DynaLoader.a";
-	}
-##-- Untested operating systems
-
-##-- start Makefile.PL generation
-local(*FH);
-open(FH, ">Makefile.PL") || die $!;
-
-##---------------------------------------------------------------
-##
-## Makefile.PL static section #1
-##
-## Ticks around here-document delimeter will cause perl to
-## qoute the here-document text without variable interpolation.
-##
-##---------------------------------------------------------------
-print FH <<'EOM';
-# Makefile.PL for perl Netscape Extension
-BEGIN { $^W = 1 }
-BEGIN { require 5.004 }
-use strict;
-use ExtUtils::MakeMaker;
-use Config;
-
-EOM
-
-##---------------------------------------------------------------
-##
-## Makefile.PL dynamic section #1
-##
-## Variable interpolation takes place in this here docuemnt.
-##
-##---------------------------------------------------------------
-print FH <<EOM;
-my \$ns_server_root = "$ns_server_root";
-my \$ns_inst_dir = "$ns_inst_dir";
-my \$ns_inc_dir = "$ns_inc_dir";
-
-# options for MakeMaker
-my \%opts = ();
-\$opts{DEFINE} = "$DEFINES";
-\$opts{dynamic_lib} = {
-	OTHERLDFLAGS => "$OTHERLDFLAGS"
-	};
-EOM
-
-##---------------------------------------------------------------
-##
-## Makefile.PL static section #2
-##
-## Ticks around here-document delimeter will cause perl to
-## qoute the here-document text without variable interpolation.
-##
-##---------------------------------------------------------------
-print FH <<'EOM';
-$opts{NAME} = 'Netscape::Server';
-$opts{VERSION_FROM} = 'Server.pm';
-$opts{OBJECT} = '$(O_FILES)';
-$opts{INC} = "-I$ns_inc_dir -I../../../nsapi";
-$opts{PMLIBDIRS} = [qw(Server eg)];
-
-# Create the Makefile
-WriteMakefile(%opts);
-
-exit(0);
-EOM
-
-##-- end Makefile.PL generation
-
-close(FH);
+    }
+    push(@lines, $nsapi_install_target);
+    return join("$/", @lines);
 }

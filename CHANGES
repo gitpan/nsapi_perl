@@ -47,3 +47,9 @@ v0.22 - Mon Mar  2 10:05:50 EST 1998
       - Implemented William Ward's (wrw@bayview.com) suggestion that
         the top level Makefile.PL do a search for the include
         directory.
+
+v0.23 - Wed Apr  1 14:39:07 EST 1998
+      - Registry.pm now properly sets AUTH_TYPE and REMOTE_USER
+      - Applied Bill Ward's Makefile.PL patch
+      - Jumbo Makefile.PL patch to allow perl Makefile.PL &&
+        make && make install.
