@@ -377,8 +377,6 @@ This variable is currently undefined under nsapi_perl.  This is a bug.
 
 =head1 BUGS
 
-nsapi_perl is alpha software.
-
 Command-line switches on your CGI scripts are currently ignored by
 nsapi_perl.  For example, if you dutifully put
 
@@ -389,17 +387,17 @@ at the start of your script, it will be ignored.
 See L</ENVIRONMENT> for some important differences in environment
 variables between nsapi_perl and regular CGI.
 
-Extension modules that dynamically load a shared object are still a
-headache for nsapi_perl; the same goes for Netscape::Registry scripts
-that use such modules.  I can only get them to work if the shared
-object has runpath to libperl.so recorded in it. YMMV.
+Extension modules that dynamically load a shared object may cause you
+grief.  See the section titled B<DYNAMIC LOADING OF EXTENSION MODULES>
+in L<nsapi_perl> if you suffer problems.  The good news is that such
+modules are reported to work "out of the box" on Win32.
 
 use CGI::Carp('fatalsToBrowser') doesn't work as expected.
 
 CGI programs can't - or at least shouldn't - muck with @INC.
 
 Expect other bugs and weirdness.  Please don't get mad; just report
-them to author.
+them to nsapi_perl mailing list: nsapi_perl@samurai.com.
 
 =head1 AUTHOR
 

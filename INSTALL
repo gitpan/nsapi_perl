@@ -14,28 +14,27 @@
 
         *** This is alpha software -- use at your own risks ***
 
-INSTALL file for nsapi_perl version 0.21.
+INSTALL file for nsapi_perl version 0.22.
 
 
 Introduction
 ------------
 
-Building nsapi_perl should be relatively straight-forward on Solaris
-and NT.  Thanks to Steve Nielsen for contributing a Makefile.PL that
-smoothes the Win32 install considerably.
+Building nsapi_perl should be relatively straight-forward on Solaris and NT.
+Thanks to Steve Nielsen for contributing a Makefile.PL that smoothes the Win32
+install considerably.
 
-You should be able to install nsapi_perl on Unix platforms other than
-Solaris, but it may require some mucking with the install process.  If
-you succeed, please let me (Ben Sugars, bsugars@canoe.ca) know so that
-I can incorporate any changes you had to make in the next release.
+You should be able to install nsapi_perl on Unix platforms other than Solaris, but
+it may require some mucking with the install process.  If you succeed, please let
+the nsapi_perl mailing list (nsapi_perl@samurai.com) know, so that we can
+incorporate any changes you had to make in the next release.
 
-The basic idea is to run a Makefile.PL Perl script that will generate
-two additional Makefile.PL perl scripts.  One Makefile.PL builds the
-nsapi_perl.so shared object that slurps Perl into Netscape.  The other
-Makefile.PL builds the Perl extension modules that represent the Perl
-version of the NSAPI programming environment.  Once the Makefile.PL
-Perl scripts have been generated, each component is compiled and
-installed separately.
+The basic idea is to run a Makefile.PL Perl script that will generate two
+additional Makefile.PL Perl scripts.  One Makefile.PL builds the nsapi_perl.so
+shared object that slurps Perl into Netscape.  The other Makefile.PL builds the
+Perl extension modules that represent the Perl version of the NSAPI programming
+environment.  Once the Makefile.PL Perl scripts have been generated, each
+component is compiled and installed separately.
 
 Enough introduction.  Here are the details
 
@@ -102,28 +101,30 @@ interpreter.  To do this see the nsapi_perl pod documentation file.
 Notes
 -----
 
--If you successfully build nsapi_perl please send me (Ben Sugars,
-bsugars@canoe.ca) an email letting me know what you had to do.  That
-way I can start to build up a hints file that may make life easier for
-the next person building on your platform.  You will also receive a
-prominent position in the CREDITS file.
+-If you successfully build nsapi_perl please send the nsapi_perl mailing list
+(nsapi_perl@samurai.com) an email letting us know what you had to do.  That way we
+can start to build up a hints file that may make life easier for the next person
+building on your platform.  You will also receive a prominent position in the
+CREDITS file.
 
--If you have trouble building nsapi_perl please send me (Ben Sugars,
-bsugars@canoe.ca) an email to let me know.  I'll do my best to help.
-My immediate goal for nsapi_perl is to make the install process easier
-and cross-platform.  The more we learn about what it takes to build on
-different systems, the better.
+-If you have trouble building nsapi_perl please send email to the nsapi_perl
+mailing list (nsapi_perl@samurai.com).  We'll do our best to help.  If you wish to
+join the mailing list, send email to
+    majordomo@samurai.com
+with
+    subscribe nsapi_perl
+in the body of the message.
 
 -Problems seem to occur when using nsapi_perl in conjunction with a
 Perl that:
      -has not been compiled to use the shared libperl.so;
      -has been compiled to have binary compatibility with 5.003.
-If your Perl uses only the static libperl.a and/or has binary
-compatibility with 5.003 you could have problems.  At this time the
-only workaround seems to be recompiling Perl so that it agrees with
-nsapi_perl.  In other words, your Perl should be compiled to use
-libperl.so and it should *not* have binary compatibility with 5.003.
+If your Perl uses only the static libperl.a and/or has binary compatibility with
+5.003 you could have problems.  At this time the only workaround seems to be
+recompiling Perl so that it agrees with nsapi_perl.  In other words, your Perl
+should be compiled to use libperl.so and it should *not* have binary compatibility
+with 5.003.
 
 -Ben Sugars
 <bsugars@canoe.ca>
-February 12, 1998
+March 2, 1998

@@ -1,5 +1,5 @@
 /* -------------------------------------------------------------------
-    nsapi_perl.c - header file for nsapi_perl
+    nsapi_perl.h - header file for nsapi_perl
 
     Copyright (C) 1997, 1998 Benjamin Sugars
 
@@ -23,12 +23,21 @@
 
 /* Function prototypes */
 void xs_init _((void));
+int nsapi_perl_bootstrap(Session *, Request *, char *);
 SV *nsapi_perl_bless_request(Request *);
 SV *nsapi_perl_bless_session(Session *);
 NSAPI_PUBLIC SV *nsapi_perl_pblock2hash_ref(pblock *);
 NSAPI_PUBLIC void traceLog(char *, ...);
 int nsapi_perl_eval_ok(Session *, Request *);
 int nsapi_perl_require_module(Session *, Request *, char *);
+
+/* dlopen stuff */
+#ifdef NP_BOOTSTRAP
+#include <dlfcn.h>
+#endif
+#if defined(NP_BOOTSTRAP) && defined(RTLD_GLOBAL)
+#define NP_USE_NP_BOOTSTRAP
+#endif
 
 /* nsapi_perl trace facility */
 #ifdef PERL_TRACE

@@ -14,7 +14,7 @@
 
 	*** This is alpha software -- use at your own risks ***
 
-README for nsapi_perl version 0.21.
+README for nsapi_perl version 0.22.
 
 
 Introduction
@@ -38,10 +38,15 @@ The prerequisites are
         -A Netscape web server.  Should work with almost any Netscape
         server that supports NSAPI programming.
 
+It is also recommended that you have a Perl that has been compiled to
+use a shared Perl library (such as libperl.so) rather than a static
+Perl library (such as libperl.a).
+
 Installation should be relatively straight-forward on Solaris and NT
 systems.  It should also be possible on other Unix systems where Perl
 has been compiled and which have working Netscape servers.  However,
-on non-Solaris Unixes the install process might need some hand-holding.
+on non-Solaris Unixes the install process might need some
+hand-holding.
 
 Please see the paragraph in the 'Notes' section of INSTALL regarding
 the use of the static libperl.a and Perls that have binary
@@ -87,9 +92,12 @@ able to detect what the correct combination of compilation and linking
 options for your system are and go from there.
 
 Extension modules that use dynamic loading of C code remain
-problematic.  For me, they only work if the module's shared library
-contains a runpath to the shared perl library.  In other words, for
-module Foo, an ldd on Foo.so needs to so
+problematic.  As of this release, dynamic loading works as expected on
+*at least* Solaris and Win32.  It may well work properly on other
+platforms too.  If you try to run a script or module that uses an
+extension and you get error messages, you may have to recompile the
+module so that it contains a runpath to the shared perl library.  In
+other words, for module Foo, an ldd on Foo.so needs to so
         libperl.so =>    /lib/perl5/sun4-solaris/5.00401/CORE/libperl.so
 or something like that.
 
@@ -108,17 +116,21 @@ so at your own since if Perl hangs your whole server will freeze
 Notes
 -----
 
-If you have any questions, comments, concerns, or criticisms please
-let me (Ben Sugars, bsugars@canoe.ca) know.  I'll do my best to
-respond.
+Send comments, criticisms, bug reports, et al. to the nsapi_perl
+mailing list at
+    nsapi_perl@samurai.com
 
-If you find and fix a bug, please let me know so that everyone can
+If you wish to subscribe to the mailing list, send an email to
+    majordomo@samurai.com
+with
+    subscribe nsapi_perl
+in the body of the message.
+
+The nsapi_perl home page is at
+    http://interact.canoe.ca/~bsugars/nsapi_perl.html
+
+If you find and fix a bug, please let us know so that everyone can
 benefit and so that you get the proper credit.
-
-Contributors wanted!  Please have a look at the file called TO_DO for
-some suggestions.  In particular, any module that uses nsapi_perl is a
-candidate for inclusion in the distribution and its author will be
-loudly acknowledged.
 
 
 Acknowledgments
@@ -144,5 +156,5 @@ and especially
 
 -Ben Sugars
 <bsugars@canoe.ca>
-February 18, 1998
+March 2, 1998
 

@@ -37,6 +37,7 @@ BEGIN { require 5.004 }
 
 use strict;
 use Config;
+use File::Find;
 
 # ----------------------------------------------------------------------
 
@@ -71,20 +72,20 @@ chomp $ns_server_root;
 $ns_server_root =~ s#(\/|\\)+$##;
 $ns_server_root =~ s#\\#\/#;
 
-##-- get NSAPI include directory.  Why did Netscape
-##-- change this?
+
+##-- Find possible include directories
+my $possible_ns_inc_dir = '';
+find(sub { $possible_ns_inc_dir = $File::Find::dir if $_ eq 'netsite.h' },
+	$ns_server_root);
+##-- confirm NSAPI include directory.
 print <<EOM;
 
 Enter the directory where the NSAPI header files can
-be found.  This is most likely one of
-    $ns_server_root/nsapi/include
-    $ns_server_root/include
-depending upon the vintage of your server.
-NSAPI header directory? [$ns_server_root/nsapi/include]
+be found: [$possible_ns_inc_dir]
 EOM
 my $ns_inc_dir;
 {
-	my $default_answer = "$ns_server_root/nsapi/include";
+	my($default_answer) = $possible_ns_inc_dir;
 	my $answer = <>;
 	chomp $answer;
 	$ns_inc_dir = ($answer or $default_answer);
@@ -142,12 +143,12 @@ if($os eq 'MSWin32') {
 	}
 ##-- Solaris-specific compile options
 elsif ($os eq 'solaris') {
-	$ns_defines .= " -DSOLARIS -D_REENTRANT -DXP_UNIX -DSPAPI20 -Wall";
+	$ns_defines .= " -DNP_BOOTSTRAP -DSOLARIS -D_REENTRANT -DXP_UNIX -DSPAPI20 -Wall";
 	}
 ##-- Untested operating systems
 else {
 	if ($os eq 'irix') {
-		$ns_defines .= " -DXP_UNIX -DIRIX -D_SGI_MP_SOURCE -fullwarn";
+		$ns_defines .= " -DNP_BOOTSTRAP -DXP_UNIX -DIRIX -D_SGI_MP_SOURCE -fullwarn";
 	}
 	elsif ($os eq 'hpux') {
 		$ns_defines .= " -DXP_UNIX -DHPUX -D_HPUX_SOURCE -Aa +DA1.0 +z -c";
@@ -189,6 +190,19 @@ Good Luck!
 EOM
 
 exit(0);
+
+##===============================================================
+## 
+## named_include
+##
+##	Finds a directory named include
+##
+##===============================================================
+
+sub named_include
+{
+	print "$_\n";
+}
 
 ##===============================================================
 ## 
@@ -288,15 +302,34 @@ WriteMakefile(%opts);
 exit(0);
 
 # override install section in Makefile
+EOM
+
+## The install section is slightly different depending upon whether
+## nsapi_perl_init.pl has been installed or not.
+if (-e "$ns_inst_dir/nsapi_perl_init.pl") {
+	## nsapi_perl_init.pl exists
+	print FH <<'EOM';
 sub MY::install
 {
-   "
-install :: all
+"install :: all
+	\$(CP) \$(INST_ARCHAUTODIR)/\$(BASEEXT).\$(DLEXT) $ns_inst_dir/.
+";
+}
+EOM
+} else {
+	## nsapi_perl_init.pl does not exist, so copy it in
+	print FH <<'EOM';
+sub MY::install
+{
+"install :: all
 	\$(CP) \$(INST_ARCHAUTODIR)/\$(BASEEXT).\$(DLEXT) $ns_inst_dir/.
 	\$(CP) nsapi_perl_init.pl $ns_inst_dir/.
 ";
 }
+EOM
+}
 
+print FH <<'EOM';
 # override dlsyms section in Makefile
 sub MY::dlsyms
 {

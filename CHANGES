@@ -39,3 +39,11 @@ v0.20 - Tue Feb 17 11:10:14 EST 1998
 
 v0.21 - Wed Feb 18 09:56:49 EST 1998
       - Fixed README file
+
+v0.22 - Mon Mar  2 10:05:50 EST 1998
+      - Added nsapi_perl_bootstrap() to let dynamic loading work
+        properly under Solaris.
+      - 'make install' no longer clobbers existing nsapi_perl_init.pl
+      - Implemented William Ward's (wrw@bayview.com) suggestion that
+        the top level Makefile.PL do a search for the include
+        directory.

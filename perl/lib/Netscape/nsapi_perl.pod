@@ -10,6 +10,7 @@ In F<obj.conf>
       funcs="nsapi_perl_init,nsapi_perl_handler"
  Init fn="nsapi_perl_init"
       init-script="/path/nsapi_perl_init.pl"
+      libperl="/path/libperl.so"
       tracelog="/tmp/nsapi_perl.log"
 
  <Object ppath="/document/root/path/*">
@@ -120,9 +121,11 @@ its deprecated nature.  If the B<conf> argument is given, then the
 file specified by I<path> will be parsed and run exactly as for the
 B<init-script> argument.
 
-nsapi_perl_init also accepts an additional optional argument,
-B<tracelog>, that may be used to enable nsapi_perl tracing.  See
-L</DIAGNOSTICS> for full details.
+nsapi_perl_init also accepts two additional optional arguments:
+B<libperl> and B<tracelog>.  B<libperl> may be specified in order to
+have properly-functioning dynamic loading of extension modules; see
+L</DYNAMIC LOADING OF EXTENSIONS> for details. B<tracelog> may be used
+to enable nsapi_perl tracing; see L</DIAGNOSTICS> for full details.
 
 F<nsapi_perl_init.pl> may load the Perl code you wish to have executed
 by the server.  For instance, if you wish to use the
@@ -394,6 +397,56 @@ Netscape::Server also provides other constants that can be used to set
 the http status of the request or the severity of errors; see
 L<Netscape::Server> for full details.
 
+=head1 DYNAMIC LOADING OF EXTENSIONS
+
+When you put a statement in a module that causes automatic loading of
+a Perl extension, such as
+
+ use Socket;
+
+you may get error messages from the run-time loader that look like:
+
+ Can't load '/path/lib/perl5/arch/auto/Foo/Foo.so' for module Foo:
+ ld.so.1: ./ns-httpd: fatal: relocation error: symbol not found:
+ Perl_sv_undef: referenced in '/path/lib/perl5/arch/auto/Foo/Foo.so'
+ at /path/lib/perl5/arch/5.00404/DynaLoader.pm line 166.
+
+This is because the Perl library is loaded into the Netscape server by
+dlopen(3) (or its equivalent).  On many platforms symbols contained in
+objects loaded in by dlopen are not visibile to other objects loaded
+in by dlopen (such as Foo.so in the above example).
+
+On some operating systems, this restriction may be worked around by
+adding the B<libperl> argument to the nsapi_perl_init() function call
+in obj.conf, like this:
+
+ Init fn="nsapi_perl_init"
+      init-script="/home/benjamin/foobar.pl"
+      libperl="/path/to/libperl.so"
+
+Here, F</path/to/libperl.so> should be the full path to the (shared)
+Perl library.  To find the right value of F</path/to/libperl.so> on
+your system, try this statement:
+
+ perl -MConfig -e 'print "$Config{archlib}/CORE\n"'
+
+This should print out the name of the directory containing
+F<libperl.so>.
+
+The presence of a B<libperl> argument in the call to nsapi_perl_init
+causes nsapi_perl to call dlopen(3) on F</path/to/libperl.so>, passing
+dlopen a flag (RTLD_GLOBAL) that tells the runtime linker symbols
+within this object are to be visible to other objects acquired at a
+later time via dlopen.
+
+Obviously this workaround only works on those systems that define
+RTLD_GLOBAL.  Currently this includes at least Solaris and IRIX; there
+may be others too that I am not aware of.  A B<libperl> argument on a
+system that does not support RTLD_GLOBAL is silently ignored.
+
+Incidently, extension modules on Win32 are reported to work just fine
+"out of the box".
+
 =head1 EXAMPLES
 
 =head2 Hello World
@@ -547,22 +600,22 @@ Here are the major issues at this time:
 
 =item o
 
-The installation process needs to be improved.  In particular, there's
-no reason why nsapi_perl can't be made to build "out-of-the-box" on
-Win32.
+Threading.  Although this version contains the first working
+integration of Perl and Netscape threads, there are still some
+unresolved issues.  Most importantly, Netscape::Registry.pm is not
+thread-safe at this time.
+
+A mechanism has been identified that will (hopefully) make
+Netscape::Registry.pm thread-safe, but at the time of writing this
+mechanism has not been implemented.
 
 =item o
 
-I can only get extension modules to work if I recompile them adding
-'-lperl' to the cc options.
-
-=item o
-
-Threading.  Grrrr.  Netscape *used* to let you run their multithreaded
-servers as multiprocess single-threaded servers if you wanted to.  The
-3.x line doesn't let you do this, AFAIK.  So, we need a thread-safe
-libperl.so.  I know this is being worked on, but in the meantime, does
-anyone know if the libperl.so with 5.004 is OK to use?
+nsapi_perl still does not work (or at least not very well) with Perls
+that use a static Perl library (such as libperl.a) rather than a
+dynamic perl library (libperl.so).  At this point the best workaround
+this bug is to recompile Perl so that is uses a dynamic Perl library.
+Hopefully this restriction will soon be removed.
 
 =back
 
@@ -581,6 +634,8 @@ Netscape::Server, Netscape::Server::Session,
 Netscape::Server::Request, Netscape::Registry
 
 perl(1)
+
+dlopen(3)
 
 Netscape documentation about their line of web servers and NSAPI.
 

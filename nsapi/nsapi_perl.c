@@ -52,7 +52,7 @@ static int trace = 0;
 
 NSAPI_PUBLIC int nsapi_perl_init(pblock * pb, Session * sn, Request * rq)
 {
-    char *init_script, *tf;
+    char *init_script, *libperl, *tf;
     char *perl_argv[2];
     SV *perl_version;
     int exitstatus, i, perl_argc;
@@ -70,6 +70,18 @@ NSAPI_PUBLIC int nsapi_perl_init(pblock * pb, Session * sn, Request * rq)
 	log_error(LOG_INFORM, "nsapi_perl_init", sn, rq,
 		  "tracing enabled. Writing to tracefile %s", tf);
     }
+
+    /* Some OSs don't make their symbols global by default.
+       This function takes care of that. */
+    libperl = pblock_findval("libperl", pb);
+    if (libperl != NULL) {
+      if (!(nsapi_perl_bootstrap(sn, rq, libperl))) {
+	log_error(LOG_CATASTROPHE, "nsapi_perl_init", sn, rq,
+		  "can't globalize perl symbol table");
+	return REQ_ABORTED;
+      }
+    }
+
     /* Find the location of the init script */
     init_script = pblock_findval("init-script", pb);
     if (init_script == NULL) {
@@ -141,6 +153,22 @@ NSAPI_PUBLIC int nsapi_perl_init(pblock * pb, Session * sn, Request * rq)
 	 "loaded a perl version %s interpreter", SvPV(perl_version, na));
     NP_TRACE(traceLog("nsapi_perl_init: loaded perl version %s\n", SvPV(perl_version, na)));
     return REQ_PROCEED;
+}
+
+/* Hack to make perl symbol table global.  Right now only tested
+   under Solaris, but will be made more portable soon? */
+int nsapi_perl_bootstrap(Session *sn, Request *rq, char *libperl)
+{
+#ifdef NP_USE_NP_BOOTSTRAP
+  if (dlopen(libperl, RTLD_LAZY|RTLD_GLOBAL) == NULL) {
+    log_error(LOG_INFORM, "nsapi_perl_bootstrap", sn, rq,
+	      "dlopen of %s: %s", libperl, dlerror());
+    return(0);
+  }
+  return(1);
+#else
+  return(1);
+#endif
 }
 
 /*
